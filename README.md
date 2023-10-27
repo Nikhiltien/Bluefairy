@@ -1,2 +1,3 @@
 # Bluefairy
-Zero depth chess engine
+
+A chess engine written in Rust using a DQN/LSTM model.
