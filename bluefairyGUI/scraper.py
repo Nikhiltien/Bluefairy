@@ -3,12 +3,14 @@ import os
 import requests
 from requests.exceptions import HTTPError
 
+PLAYER_NAME = "nikix0x0"
+
 headers = {
-    'User-Agent': 'Pinocchio/1.0 (nikhil17tn@gmail.com)',
+    'User-Agent': 'Bluefairy/1.0 (bluefairy@gmail.com)',
 }
 
 base_url = "https://api.chess.com/pub/player/"
-player_name = "nikix0x0"
+player_name = PLAYER_NAME
 final_url = f"{base_url}{player_name}"
 
 response = requests.get(final_url, headers=headers)
