@@ -36,3 +36,12 @@ Ensemble Method
 
 Model Interpretability
  		Techniques: Methods like SHAP (SHapley Additive exPlanations) or LIME (Local Interpretable Model-agnostic Explanations) to interpret the model's decisions for debugging and improvement.
+
+<!-- - /models
+- /src
+    - /engine
+        - chess.rs
+        - board_evaluator.rs
+    - /utils
+        - some_utility.rs
+    - main.rs -->
