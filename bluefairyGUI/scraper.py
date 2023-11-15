@@ -3,7 +3,8 @@ import os
 import requests
 from requests.exceptions import HTTPError
 
-PLAYER_NAME = "nikix0x0"
+PLAYER_NAME = "niki0x"
+MONTHS = 2
 
 headers = {
     'User-Agent': 'Bluefairy/1.0 (bluefairy@gmail.com)',
@@ -56,8 +57,8 @@ class ChessComPlayerArchives:
                 print(f"Failed to download archive {i + 1} with status code {pgn_response.status_code}")
 
 if __name__ == "__main__":
-    player_archives = ChessComPlayerArchives('hikaru')
-    player_archives.fetch_last_archives()
+    player_archives = ChessComPlayerArchives(PLAYER_NAME)
+    player_archives.fetch_last_archives(MONTHS)
     player_archives.download_archives()
     
     for i, archive in enumerate(player_archives.archives):
