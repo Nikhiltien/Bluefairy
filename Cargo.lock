@@ -15,6 +15,7 @@ dependencies = [
  "ndarray 0.15.6",
  "ndarray-linalg",
  "ndarray-rand",
+ "rand 0.8.5",
  "rayon",
  "serde",
  "serde_derive",
