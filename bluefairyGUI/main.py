@@ -1,37 +1,43 @@
 from evaluate import GameAnalyzer
+import asyncio
 import chess.pgn
 
-def main():
-    analyzer = GameAnalyzer()
+async def analyze_first_games(directory, num_games=3):
+    analyzer = GameAnalyzer("../engines/stockfish")
 
-    # Sample PGN (part of a famous game)
-    pgn_sample = """
-    [Event "F/S Return Match"]
-    [Site "Belgrade, Serbia JUG"]
-    [Date "1992.11.04"]
-    [Round "29"]
-    [White "Fischer, Robert J."]
-    [Black "Spassky, Boris V."]
-    [Result "1/2-1/2"]
+    await analyzer.init_engine()
+    all_games = analyzer.load_games_from_directory(directory)
 
-    1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
-    """
+    # Check if there are enough games loaded
+    if len(all_games) < num_games:
+        print(f"Not enough games in the directory. Found only {len(all_games)} games.")
+        await analyzer.close_engine()
+        return
 
-    if analyzer.load_game(pgn_sample):
-        print("Game loaded successfully!")
+    for i in range(num_games):
+        game = all_games[i]
+        analysis_results = await analyzer.analyze_game_async(game)
 
-        # Test analyze_game method
-        game_analysis = analyzer.analyze_game()
-        print("Game Analysis:")
-        print(game_analysis)
+        # Extract metadata from the game
+        metadata = {
+            "Event": game.headers.get("Event", "N/A"),
+            "White": game.headers.get("White", "N/A"),
+            "Black": game.headers.get("Black", "N/A"),
+            "WhiteElo": game.headers.get("WhiteElo", "N/A"),
+            "BlackElo": game.headers.get("BlackElo", "N/A"),
+            "TimeControl": game.headers.get("TimeControl", "N/A")
+        }
 
-        # Test analyze_position method with a sample position
-        position_fen = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4"
-        position_analysis = analyzer.analyze_position(position_fen)
-        print("Position Analysis:")
-        print(position_analysis)
-    else:
-        print("Failed to load the game.")
+        print(f"Game {i + 1} Metadata: {metadata}")
 
-if __name__ == "__main__":
-    main()
+        # Displaying results for each game
+        move_number = 1
+        for move, move_info in zip(game.mainline_moves(), analysis_results):
+            print(f"Move {move_number} ({move}): Evaluation: {move_info['score']}")
+            move_number += 1
+        print("\n")
+
+    await analyzer.close_engine()
+
+directory_path = "games"
+asyncio.run(analyze_first_games(directory_path))
