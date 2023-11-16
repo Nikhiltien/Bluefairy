@@ -1,5 +1,6 @@
 from database import ChessDBManager
 import whale
+import asyncio
 import logging
 
 async def main():
@@ -25,5 +26,4 @@ async def main():
 
     db_manager.close_connection()
 
-import asyncio
 asyncio.run(main())

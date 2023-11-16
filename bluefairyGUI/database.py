@@ -19,6 +19,9 @@ class ChessDBManager:
         self.async_client = AsyncIOMotorClient(uri)
         self.async_db = self.async_client[DATABASE_NAME]
 
+    def close_connection(self):
+        self.client.close()
+
     @staticmethod
     def generate_game_hash(moves):
         """Generate a hash from the list of moves."""
@@ -78,6 +81,59 @@ class ChessDBManager:
         """Delete a specific game from the database."""
         result = await self.async_db[GAMES_COLLECTION].delete_one({"game_id": game_id})
         return result.deleted_count
+    
+    async def fetch_game_pgn(self, unique_identifier):
+        # Fetch the game by its unique identifier
+        game = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
+        if not game:
+            return None  # No game found
+
+        # Fetch the moves associated with the game
+        moves_document = await self.async_db[MOVES_COLLECTION].find_one({"game_id": game['_id']})
+        if not moves_document:
+            return None  # No moves found for the game
+
+        moves = moves_document['moves']
+        return self.convert_to_pgn(game, moves)
+    
+    def convert_to_pgn(self, game_metadata, moves):
+        pgn_parts = []
+
+        # Add headers
+        pgn_parts.append(f'[Event "{game_metadata.get("Event", "Unknown")}"]')
+        pgn_parts.append(f'[Site "{game_metadata.get("Site", "Unknown")}"]')
+        pgn_parts.append(f'[Date "{game_metadata.get("Date", "????")}"]')
+        pgn_parts.append(f'[Round "{game_metadata.get("Round", "?")}"]')
+        pgn_parts.append(f'[White "{game_metadata.get("White", "Unknown")}"]')
+        pgn_parts.append(f'[Black "{game_metadata.get("Black", "Unknown")}"]')
+        pgn_parts.append(f'[Result "{game_metadata.get("Result", "*")}"]')
+
+        pgn_parts.append("\n")
+
+        for i, move in enumerate(moves):
+            if i % 2 == 0:  # White's move
+                # Add move number before white's move
+                pgn_parts.append(f"{(i // 2) + 1}.")
+                pgn_parts.append(move['move'])
+            else:  # Black's move
+                # Add move number before black's move
+                pgn_parts.append(f"{(i // 2) + 1}...")
+                pgn_parts.append(move['move'])
+            
+            # Add clock annotation if available
+            if 'time' in move:
+                time_formatted = self.format_time(move['time'])
+                pgn_parts.append(f"{{[%clk {time_formatted}]}}")
+
+        pgn_string = " ".join(pgn_parts)
+        return pgn_string
+    
+    def format_time(self, time_in_seconds):
+        """Format time in seconds into a clock annotation format (H:MM:SS)."""
+        hours = int(time_in_seconds // 3600)
+        minutes = int((time_in_seconds % 3600) // 60)
+        seconds = int(time_in_seconds % 60)
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
 
     async def insert_moves(self, game_id, moves):
         """Insert all moves of a specific game as a single document."""
@@ -92,8 +148,3 @@ class ChessDBManager:
         # Insert a new variation into the 'variations' collection
         # variation_data should be a dictionary with variation details
         self.db['variations'].insert_one(variation_data)
-
-    # Add methods for moves, player information, and other operations as needed
-
-    def close_connection(self):
-        self.client.close()
