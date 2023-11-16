@@ -1,12 +1,40 @@
 import pymongo
 import asyncio
-import motor.motor_asyncio
+import motor
+from motor.motor_asyncio import AsyncIOMotorClient
 
-class ChessDatabase:
-    def __init__(self, db_url, db_name):
-        # Initialize MongoDB client
-        self.client = pymongo.MongoClient(db_url)
-        self.db = self.client[db_name]
+DATABASE_NAME = "Bluefairy"
+PLAYERS_COLLECTION = "players"
+GAMES_COLLECTION = "games"
+MOVES_COLLECTION = "moves"
+
+class ChessDBManager:
+    def __init__(self, uri="mongodb://localhost:27017"):
+        self.client = pymongo.MongoClient(uri)
+        self.db = self.client[DATABASE_NAME]
+        # Async client setup
+        self.async_client = AsyncIOMotorClient(uri)
+        self.async_db = self.async_client[DATABASE_NAME]
+
+    def create_player_profile(self, player_data):
+        """Insert a new player profile into the database."""
+        result = self.db[PLAYERS_COLLECTION].insert_one(player_data)
+        return result.inserted_id
+    
+    def update_player_profile(self, player_id, update_data):
+        """Update an existing player's profile."""
+        result = self.db[PLAYERS_COLLECTION].update_one({"player_id": player_id}, {"$set": update_data})
+        return result.modified_count
+    
+    def get_player_data(self, query):
+        """Fetch player data based on a query."""
+        player_data = self.db[PLAYERS_COLLECTION].find_one(query)
+        return player_data
+    
+    def delete_player_profile(self, player_id):
+        """Delete a player profile from the database."""
+        result = self.db[PLAYERS_COLLECTION].delete_one({"player_id": player_id})
+        return result.deleted_count
 
     def insert_game(self, game_data):
         # Insert a new chess game into the 'games' collection

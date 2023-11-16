@@ -1,9 +1,10 @@
 from evaluate import GameAnalyzer
 import asyncio
+import matplotlib.pyplot as plt
 import chess.pgn
 
-async def analyze_first_games(directory, num_games=3):
-    analyzer = GameAnalyzer("../engines/stockfish")
+async def analyze_first_games(directory, num_games=1):
+    analyzer = GameAnalyzer("stockfish")
 
     await analyzer.init_engine()
     all_games = analyzer.load_games_from_directory(directory)
@@ -14,7 +15,7 @@ async def analyze_first_games(directory, num_games=3):
         await analyzer.close_engine()
         return
 
-    for i in range(num_games):
+    for i in range(min(num_games, len(all_games))):
         game = all_games[i]
         analysis_results = await analyzer.analyze_game_async(game)
 
@@ -37,7 +38,29 @@ async def analyze_first_games(directory, num_games=3):
             move_number += 1
         print("\n")
 
-    await analyzer.close_engine()
+        scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
+
+        # Plotting
+        plt.figure(figsize=(10, 6))
+        moves = range(1, len(scores) + 1)
+        plt.plot(moves, scores, marker='o')
+
+        # Create boolean arrays for conditions
+        above_zero = [score > 0 for score in scores]
+        below_zero = [score <= 0 for score in scores]
+
+        # Shading areas above and below 0
+        plt.fill_between(moves, scores, 0, where=above_zero, interpolate=True, color='lightgray')
+        plt.fill_between(moves, scores, 0, where=below_zero, interpolate=True, color='darkgray')
+
+        # Graph customization
+        plt.title(f"Game {i + 1} Evaluation")
+        plt.xlabel("Move Number")
+        plt.ylabel("Evaluation")
+        plt.xlim(left=0)
+        plt.ylim(-10, 10)
+        plt.grid(True)
+        plt.show()
 
 directory_path = "games"
 asyncio.run(analyze_first_games(directory_path))

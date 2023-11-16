@@ -6,9 +6,9 @@ import chess
 import chess.engine
 
 class GameAnalyzer:
-    def __init__(self, engine_path="../engines/stockfish"):
+    def __init__(self, _engine="stockfish"):
         self.board = chess.Board()
-        self.engine_path = engine_path
+        self.engine_path = f"../engines/{_engine}"
         self.engine = None
 
     async def init_engine(self):
