@@ -193,10 +193,10 @@ async def parse_pgn_files(directory: str):
     return parsed_games
 
 async def main():
-    directory = 'games'  # Path to your directory containing PGN files
+    directory = 'games'
     parsed_games = await parse_pgn_files(directory)
 
-    # Optional: Print a summary of parsed data for verification
+    # Summary of parsed data for verification
     for game in parsed_games:
         logging.info(f"Game metadata: {game['Metadata']}")
         logging.info(f"First few moves: {game['Moves'][:5]}")  # Print first few moves for each game

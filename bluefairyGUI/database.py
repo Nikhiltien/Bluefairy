@@ -12,7 +12,6 @@ class ChessDBManager:
     def __init__(self, uri="mongodb://localhost:27017"):
         self.client = pymongo.MongoClient(uri)
         self.db = self.client[DATABASE_NAME]
-        # Async client setup
         self.async_client = AsyncIOMotorClient(uri)
         self.async_db = self.async_client[DATABASE_NAME]
 
@@ -36,14 +35,42 @@ class ChessDBManager:
         result = self.db[PLAYERS_COLLECTION].delete_one({"player_id": player_id})
         return result.deleted_count
 
-    def insert_game(self, game_data):
-        # Insert a new chess game into the 'games' collection
-        # game_data should be a dictionary with game details
-        self.db['games'].insert_one(game_data)
+    async def insert_game(self, game_data):
+        """Insert a new chess game into the games collection."""
+        result = await self.async_db[GAMES_COLLECTION].insert_one(game_data)
+        return result.inserted_id
 
-    def get_game_by_player(self, player_name):
-        # Retrieve chess games by player name from the 'games' collection
-        return list(self.db['games'].find({'players': player_name}))
+    async def get_games_by_player(self, player_id):
+        """Retrieve chess games involving a specific player."""
+        cursor = self.async_db[GAMES_COLLECTION].find({"players": player_id})
+        return [game async for game in cursor]
+
+    async def update_game(self, game_id, update_data):
+        """Update details of a specific game."""
+        result = await self.async_db[GAMES_COLLECTION].update_one({"game_id": game_id}, {"$set": update_data})
+        return result.modified_count
+
+    async def delete_game(self, game_id):
+        """Delete a specific game from the database."""
+        result = await self.async_db[GAMES_COLLECTION].delete_one({"game_id": game_id})
+        return result.deleted_count
+
+    async def insert_moves(self, game_id, moves):
+        """Insert moves for a specific game."""
+        moves_data = {
+            f"moves.{move['move']}": {
+                "white": move['white'],
+                "black": move.get('black', ''),  # Handle cases where the last black move might be missing
+                "time": move['time']
+            }
+            for move in moves
+        }
+
+        result = await self.async_db[GAMES_COLLECTION].update_one(
+            {"game_id": game_id},
+            {"$set": moves_data}
+        )
+        return result.modified_count
 
     def insert_variation(self, variation_data):
         # Insert a new variation into the 'variations' collection
@@ -53,50 +80,4 @@ class ChessDBManager:
     # Add methods for moves, player information, and other operations as needed
 
     def close_connection(self):
-        # Close the MongoDB client connection when done
         self.client.close()
-
-async def main():
-    # Connect to MongoDB asynchronously
-    client = motor.motor_asyncio.AsyncIOMotorClient('mongodb://localhost:27017')
-
-    # Access a database and collection
-    db = client['mydatabase']
-    collection = db['mycollection']
-
-    # Insert a document asynchronously
-    document = {'key': 'value'}
-    await collection.insert_one(document)
-
-    # Find documents asynchronously
-    async for doc in collection.find({'key': 'value'}):
-        print(doc)
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-
-# # Example usage:
-# if __name__ == "__main__":
-#     db_url = "mongodb://localhost:27017/"  # MongoDB server URL
-#     db_name = "chessdb"  # Database name
-
-#     chess_db = ChessDatabase(db_url, db_name)
-
-#     # Example: Insert a chess game
-#     game_data = {
-#         'players': ['Player1', 'Player2'],
-#         'result': '1-0',
-#         'moves': ['e4', 'e5', 'Nf3', 'Nc6']
-#     }
-#     chess_db.insert_game(game_data)
-
-#     # Example: Retrieve games by player name
-#     player_name = 'Player1'
-#     games = chess_db.get_game_by_player(player_name)
-#     print(f"Games played by {player_name}:")
-#     for game in games:
-#         print(game)
-
-#     # Close the MongoDB connection when done
-#     chess_db.close_connection()
