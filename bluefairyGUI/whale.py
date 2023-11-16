@@ -1,8 +1,18 @@
+import aiofiles
+import os
+import logging
+import traceback
+import asyncio
+import threading
+from asyncio import Semaphore
+from datetime import timedelta
 import re
 import csv
 import os
 import logging
 from datetime import datetime, timedelta
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Parser():
     def __init__(self, pgn: str):
@@ -47,7 +57,7 @@ class Parser():
             black_move = moves[i+1] if i+1 < len(moves) else None
             move_time = clock_times[i // 2] if clock_times and i // 2 < len(clock_times) else None
             paired_moves.append({
-                "turn": i // 2 + 1,
+                "move": i // 2 + 1,
                 "white": white_move,
                 "black": black_move,
                 "time": move_time.total_seconds() if move_time else None
@@ -147,3 +157,48 @@ class Parser():
                         time
                     ]
                     writer.writerow(row)
+
+async def parse_pgn_files(directory: str):
+    parsed_games = []
+
+    if not os.path.exists(directory):
+        logging.error(f"The directory {directory} does not exist.")
+        return parsed_games
+
+    files = os.listdir(directory)
+    logging.info(f"Files in directory {directory}: {files}")
+
+    if not files:
+        logging.info(f"The directory {directory} is empty.")
+        return parsed_games
+
+    for filename in files:
+        logging.info(f"Processing file {filename}")
+
+        if filename.endswith(".pgn"):
+            filepath = os.path.join(directory, filename)
+            async with aiofiles.open(filepath, mode='r') as file:
+                content = await file.read()
+
+                parser = Parser(content)
+                parser.parse()
+                parsed_games.extend(parser.games)
+
+                # Debug print for verification
+                logging.info(f"Parsed {len(parser.games)} games from {filename}")
+        else:
+            logging.info(f"Skipping file {filename} as it does not have a .pgn extension.")
+
+    logging.info(f"Total games parsed: {len(parsed_games)}")
+    return parsed_games
+
+async def main():
+    directory = 'games'  # Path to your directory containing PGN files
+    parsed_games = await parse_pgn_files(directory)
+
+    # Optional: Print a summary of parsed data for verification
+    for game in parsed_games:
+        logging.info(f"Game metadata: {game['Metadata']}")
+        logging.info(f"First few moves: {game['Moves'][:5]}")  # Print first few moves for each game
+
+asyncio.run(main())
