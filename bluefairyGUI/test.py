@@ -9,18 +9,22 @@ async def main():
     parsed_games = await whale.parse_pgn_files(directory)
 
     for game in parsed_games:
-        logging.info(f"Game metadata: {game['Metadata']}")
-        logging.info(f"First 5 moves: {game['Moves'][:5]}")
-
-        # Format game data
-        game_data = {
-            "metadata": game['Metadata'],
-            "moves": game['Moves']
-        }
-
-        # Insert game into database
-        game_id = await db_manager.insert_game(game_data)
+        # Extract and store game metadata
+        game_metadata = game['Metadata']
+        game_id = await db_manager.insert_game(game_metadata)
         logging.info(f"Inserted game with ID: {game_id}")
+
+        # Extract and store moves
+        await db_manager.insert_moves(game_id, game['Moves'])
+        logging.info(f"Inserted moves for game ID: {game_id}")
+
+        # Update player profiles
+        white_player = game_metadata['White']
+        black_player = game_metadata['Black']
+        white_elo = game_metadata.get('WhiteElo')
+        black_elo = game_metadata.get('BlackElo')
+        db_manager.update_player_profile(white_player, {"elo": white_elo})
+        db_manager.update_player_profile(black_player, {"elo": black_elo})
 
     db_manager.close_connection()
 

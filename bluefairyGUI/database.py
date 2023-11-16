@@ -58,21 +58,13 @@ class ChessDBManager:
         return result.deleted_count
 
     async def insert_moves(self, game_id, moves):
-        """Insert moves for a specific game."""
-        moves_data = {
-            f"moves.{move['move']}": {
-                "white": move['white'],
-                "black": move.get('black', ''),  # Handle cases where the last black move might be missing
-                "time": move['time']
-            }
-            for move in moves
+        """Insert all moves of a specific game as a single document."""
+        moves_document = {
+            "game_id": game_id,
+            "moves": moves
         }
-
-        result = await self.async_db[GAMES_COLLECTION].update_one(
-            {"game_id": game_id},
-            {"$set": moves_data}
-        )
-        return result.modified_count
+        result = await self.async_db[MOVES_COLLECTION].insert_one(moves_document)
+        return result.inserted_id
 
     def insert_variation(self, variation_data):
         # Insert a new variation into the 'variations' collection

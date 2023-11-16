@@ -51,19 +51,16 @@ class Parser():
         moves = self.extract_moves(moves_str)
         clock_times = self.convert_clock_times(clock_times_str)
 
-        paired_moves = []
-        for i in range(0, len(moves), 2):
-            white_move = moves[i]
-            black_move = moves[i+1] if i+1 < len(moves) else None
-            move_time = clock_times[i // 2] if clock_times and i // 2 < len(clock_times) else None
-            paired_moves.append({
-                "move": i // 2 + 1,
-                "white": white_move,
-                "black": black_move,
+        parsed_moves = []
+        for i, move in enumerate(moves):
+            move_time = clock_times[i] if clock_times and i < len(clock_times) else None
+            parsed_moves.append({
+                "ply": i + 1,
+                "move": move,
                 "time": move_time.total_seconds() if move_time else None
             })
 
-        return paired_moves
+        return parsed_moves
 
     @staticmethod
     def extract_moves(moves_str):
@@ -191,12 +188,12 @@ async def parse_pgn_files(directory: str):
     logging.info(f"Total games parsed: {len(parsed_games)}")
     return parsed_games
 
-async def whale():
-    directory = 'games'
-    parsed_games = await parse_pgn_files(directory)
+# async def whale():
+#     directory = 'games'
+#     parsed_games = await parse_pgn_files(directory)
 
-    for game in parsed_games:
-        logging.info(f"Game metadata: {game['Metadata']}")
-        logging.info(f"First 5 moves: {game['Moves'][:5]}")
+#     for game in parsed_games:
+#         logging.info(f"Game metadata: {game['Metadata']}")
+#         logging.info(f"First 5 moves: {game['Moves'][:5]}")
 
-asyncio.run(whale())
+# asyncio.run(whale())
