@@ -1,8 +1,10 @@
 import pymongo
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import hashlib
 import asyncio
 import motor
+import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 
 DATABASE_NAME = "Bluefairy"
@@ -17,15 +19,20 @@ class ChessDBManager:
         self.async_client = AsyncIOMotorClient(uri)
         self.async_db = self.async_client[DATABASE_NAME]
 
-    def create_player_profile(self, player_data):
-        """Insert a new player profile into the database."""
-        result = self.db[PLAYERS_COLLECTION].insert_one(player_data)
-        return result.inserted_id
+    @staticmethod
+    def generate_game_hash(moves):
+        """Generate a hash from the list of moves."""
+        move_string = ' '.join([f"{move['ply']} {move['move']}" for move in moves])
+        return hashlib.sha256(move_string.encode()).hexdigest()
     
-    def update_player_profile(self, player_id, update_data):
-        """Update an existing player's profile."""
-        result = self.db[PLAYERS_COLLECTION].update_one({"player_id": player_id}, {"$set": update_data})
-        return result.modified_count
+    async def upsert_player_profile(self, player_name, elo):
+        """Create or update a player profile."""
+        result = await self.async_db[PLAYERS_COLLECTION].update_one(
+            {"name": player_name},
+            {"$set": {"elo": elo}},
+            upsert=True  # Creates a new document if one doesn't exist
+        )
+        return result.upserted_id or result.modified_count
     
     def get_player_data(self, query):
         """Fetch player data based on a query."""
@@ -36,11 +43,26 @@ class ChessDBManager:
         """Delete a player profile from the database."""
         result = self.db[PLAYERS_COLLECTION].delete_one({"player_id": player_id})
         return result.deleted_count
+    
+    async def get_game_by_identifier(self, unique_identifier):
+        """Check if a game with the given unique identifier exists."""
+        game = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
+        return game
 
-    async def insert_game(self, game_data):
-        """Insert a new chess game into the games collection."""
-        result = await self.async_db[GAMES_COLLECTION].insert_one(game_data)
-        return result.inserted_id
+    async def insert_game(self, game_metadata, moves):
+        """Insert a new chess game into the games collection if it doesn't exist."""
+        game_hash = self.generate_game_hash(moves)
+        unique_identifier = f"{game_metadata['Event']}-{game_metadata['Date']}-{game_metadata['White']}-{game_metadata['Black']}-{game_hash}"
+        existing_game = await self.get_game_by_identifier(unique_identifier)
+        if existing_game:
+            print(f"GameID {existing_game['_id']} already exists.")
+            return unique_identifier  # Return the ID of the existing game
+
+        game_metadata['unique_identifier'] = unique_identifier
+        result = await self.async_db[GAMES_COLLECTION].insert_one(game_metadata)
+        game_id = result.inserted_id
+        await self.insert_moves(game_id, moves)
+        return unique_identifier
 
     async def get_games_by_player(self, player_id):
         """Retrieve chess games involving a specific player."""

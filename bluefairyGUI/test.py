@@ -11,20 +11,17 @@ async def main():
     for game in parsed_games:
         # Extract and store game metadata
         game_metadata = game['Metadata']
-        game_id = await db_manager.insert_game(game_metadata)
-        logging.info(f"Inserted game with ID: {game_id}")
-
-        # Extract and store moves
-        await db_manager.insert_moves(game_id, game['Moves'])
-        logging.info(f"Inserted moves for game ID: {game_id}")
+        moves = game['Moves']
+        game_id = await db_manager.insert_game(game_metadata, moves)
+        logging.info(f"Processed game with ID: {game_id}")
 
         # Update player profiles
         white_player = game_metadata['White']
         black_player = game_metadata['Black']
-        white_elo = game_metadata.get('WhiteElo')
-        black_elo = game_metadata.get('BlackElo')
-        db_manager.update_player_profile(white_player, {"elo": white_elo})
-        db_manager.update_player_profile(black_player, {"elo": black_elo})
+        white_elo = game_metadata.get('WhiteElo', 'Unknown')
+        black_elo = game_metadata.get('BlackElo', 'Unknown')
+        await db_manager.upsert_player_profile(white_player, white_elo)
+        await db_manager.upsert_player_profile(black_player, black_elo)
 
     db_manager.close_connection()
 
