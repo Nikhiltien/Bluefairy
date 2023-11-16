@@ -184,7 +184,6 @@ async def parse_pgn_files(directory: str):
                 parser.parse()
                 parsed_games.extend(parser.games)
 
-                # Debug print for verification
                 logging.info(f"Parsed {len(parser.games)} games from {filename}")
         else:
             logging.info(f"Skipping file {filename} as it does not have a .pgn extension.")
@@ -192,13 +191,12 @@ async def parse_pgn_files(directory: str):
     logging.info(f"Total games parsed: {len(parsed_games)}")
     return parsed_games
 
-async def main():
+async def whale():
     directory = 'games'
     parsed_games = await parse_pgn_files(directory)
 
-    # Summary of parsed data for verification
     for game in parsed_games:
         logging.info(f"Game metadata: {game['Metadata']}")
-        logging.info(f"First few moves: {game['Moves'][:5]}")  # Print first few moves for each game
+        logging.info(f"First 5 moves: {game['Moves'][:5]}")
 
-asyncio.run(main())
+asyncio.run(whale())

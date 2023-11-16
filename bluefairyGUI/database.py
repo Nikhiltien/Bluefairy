@@ -1,4 +1,6 @@
 import pymongo
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 import asyncio
 import motor
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -10,7 +12,7 @@ MOVES_COLLECTION = "moves"
 
 class ChessDBManager:
     def __init__(self, uri="mongodb://localhost:27017"):
-        self.client = pymongo.MongoClient(uri)
+        self.client = MongoClient(uri)
         self.db = self.client[DATABASE_NAME]
         self.async_client = AsyncIOMotorClient(uri)
         self.async_db = self.async_client[DATABASE_NAME]
