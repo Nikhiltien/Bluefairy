@@ -1,58 +1,65 @@
 from analysis import GameAnalyzer
 import asyncio
-import matplotlib.pyplot as plt
+import io
 import chess.pgn
+from database import ChessDBManager
+import matplotlib.pyplot as plt
 
-async def analyze_games(directory, num_games, plot_evaluations=False):
+uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
+db_manager = ChessDBManager(uri)
+unique_identifier = "Live Chess-2023.11.01-ITWillyB-niki0x-974f508f2e5258e017e67e7f8d36ad03d8e8c8a937e077ba873178257e125258"
+
+async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=True):
     analyzer = GameAnalyzer("stockfish")
-
     await analyzer.init_engine()
-    all_games = analyzer.load_games_from_directory(directory)
 
-    if not all_games:
-        print("No games found in the directory.")
-        await analyzer.close_engine()
+    game, moves = await db_manager.get_game_by_identifier(unique_identifier)
+    if not game or not moves:
+        print(f"No game data found for identifier: {unique_identifier}")
         return
 
-    games_to_analyze = all_games if num_games <= 0 else all_games[:num_games]
+    pgn_string = db_manager.convert_to_pgn(game, moves)
 
-    for i, game in enumerate(games_to_analyze):
-        analysis_results = await analyzer.analyze_game_async(game)
+    pgn_io = io.StringIO(pgn_string)
+    game = chess.pgn.read_game(pgn_io)
 
-        metadata = {
-            "Event": game.headers.get("Event", "N/A"),
-            "White": game.headers.get("White", "N/A"),
-            "Black": game.headers.get("Black", "N/A"),
-            "WhiteElo": game.headers.get("WhiteElo", "N/A"),
-            "BlackElo": game.headers.get("BlackElo", "N/A"),
-            "TimeControl": game.headers.get("TimeControl", "N/A")
-        }
+    analysis_results = await analyzer.analyze_game_async(game)
 
-        print(f"Game {i + 1} Metadata: {metadata}")
+    metadata = {
+        "Event": game.headers.get("Event", "N/A"),
+        "White": game.headers.get("White", "N/A"),
+        "Black": game.headers.get("Black", "N/A"),
+        "Result": game.headers.get("Result", "N/A"),
+    }
+    print(f"Game {game} Metadata: {metadata}")
 
-        for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), 1):
-            print(f"Move {move_number} ({move}): Evaluation: {move_info['score']}")
+    for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), 1):
+        score = move_info['score'].score(mate_score=10000)
+        print(f"Move {move_number} ({move}): Evaluation: {score}")
+        await db_manager.upsert_move(unique_identifier, move_number, score)
 
-        if plot_evaluations:
-            scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
-            
-            plt.figure(figsize=(10, 6))
-            moves = range(1, len(scores) + 1)
-            plt.plot(moves, scores, marker='o')
+    if plot_evaluations:
+        scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
+        
+        plt.figure(figsize=(10, 6))
+        moves = range(1, len(scores) + 1)
+        plt.plot(moves, scores, marker='o')
 
-            above_zero = [score > 0 for score in scores]
-            below_zero = [score <= 0 for score in scores]
+        above_zero = [score > 0 for score in scores]
+        below_zero = [score <= 0 for score in scores]
 
-            plt.fill_between(moves, scores, 0, where=above_zero, interpolate=True, color='lightgray')
-            plt.fill_between(moves, scores, 0, where=below_zero, interpolate=True, color='darkgray')
+        plt.fill_between(moves, scores, 0, where=above_zero, interpolate=True, color='lightgray')
+        plt.fill_between(moves, scores, 0, where=below_zero, interpolate=True, color='darkgray')
 
-            plt.title(f"Game {i + 1} Evaluation")
-            plt.xlabel("Move Number")
-            plt.ylabel("Evaluation")
-            plt.xlim(left=0)
-            plt.ylim(-10, 10)
-            plt.grid(True)
-            plt.show()
+        plt.title(f"{metadata['Event']} Evaluation")
+        plt.xlabel("Move Number")
+        plt.ylabel("Evaluation")
+        plt.xlim(left=0)
+        plt.ylim(-10, 10)
+        plt.grid(True)
+        plt.show()
 
-directory_path = "games"
-asyncio.run(analyze_games(directory_path, num_games=0, plot_evaluations=False))
+    await analyzer.close_engine()
+
+# Usage
+asyncio.run(analyze_games_from_db(db_manager, unique_identifier))

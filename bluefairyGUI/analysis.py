@@ -4,12 +4,17 @@ import glob
 import asyncio
 import chess
 import chess.engine
+import chess.pgn
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class GameAnalyzer:
     def __init__(self, _engine="stockfish"):
         self.board = chess.Board()
         self.engine_path = f"../engines/{_engine}"
         self.engine = None
+        self.openings = {}
 
     async def init_engine(self):
         if not self.engine:
@@ -84,4 +89,38 @@ class GameAnalyzer:
                 improvements.append({'move_num': move_num, 'suggested_move': suggested_move})
         return improvements
 
-    # Additional helper methods as needed
+    def load_eco_book(self, file_path='../book/scid.eco'):
+        with open(file_path, 'r') as eco_file:
+            self.openings = self.build_opening_hashmap(eco_file.read())
+
+    @staticmethod
+    def build_opening_hashmap(eco_book):
+        openings = {}
+        lines = eco_book.split('\n')
+        
+        for line in lines:
+            if line and line[0] in 'ABCDE':
+                parts = line.split('"', 1)
+                eco_code = parts[0].strip()
+                opening_name = parts[1].split('"')[0].strip()
+                moves = parts[1].split('*')[0].split('"')[1].strip().split(' ')
+                moves_tuple = tuple(moves)
+                openings[moves_tuple] = {'name': opening_name, 'eco': eco_code}
+        
+        return openings
+
+    def find_opening(self, eco_moves):
+        # Ensure eco_moves is a tuple
+        if not isinstance(eco_moves, tuple):
+            raise TypeError(f"Expected tuple, got {type(eco_moves)}")
+
+        for length in range(len(eco_moves), 0, -1):
+            opening_key = tuple(eco_moves[:length])
+            if opening_key in self.openings:
+                return self.openings[opening_key]['name'], self.openings[opening_key]['eco']
+        return None, None
+
+    def identify_opening_from_pgn(self, pgn_string):
+        game = chess.pgn.read_game(io.StringIO(pgn_string))
+        moves = [self.board.san(move) for move in game.mainline_moves()]
+        return self.find_opening(moves)

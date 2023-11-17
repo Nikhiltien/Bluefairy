@@ -50,7 +50,9 @@ class ChessDBManager:
     async def get_game_by_identifier(self, unique_identifier):
         """Check if a game with the given unique identifier exists."""
         game = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
-        return game
+        moves_document = await self.async_db[MOVES_COLLECTION].find_one({"game_id": game['_id']})
+        moves = moves_document['moves']
+        return (game, moves)
 
     async def insert_game(self, game_metadata, moves):
         """Insert a new chess game into the games collection if it doesn't exist."""
@@ -82,19 +84,22 @@ class ChessDBManager:
         result = await self.async_db[GAMES_COLLECTION].delete_one({"game_id": game_id})
         return result.deleted_count
     
-    async def fetch_game_pgn(self, unique_identifier):
-        # Fetch the game by its unique identifier
-        game = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
-        if not game:
-            return None  # No game found
+    async def fetch_game_pgns(self, unique_identifiers):
+        pgns = []
+        for unique_identifier in unique_identifiers:
+            game = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
+            if not game:
+                continue
 
-        # Fetch the moves associated with the game
-        moves_document = await self.async_db[MOVES_COLLECTION].find_one({"game_id": game['_id']})
-        if not moves_document:
-            return None  # No moves found for the game
+            moves_document = await self.async_db[MOVES_COLLECTION].find_one({"game_id": game['_id']})
+            if not moves_document:
+                continue
 
-        moves = moves_document['moves']
-        return self.convert_to_pgn(game, moves)
+            moves = moves_document['moves']
+            pgn_string = self.convert_to_pgn(game, moves)
+            pgns.append(pgn_string)
+
+        return pgns
     
     def convert_to_pgn(self, game_metadata, moves):
         pgn_parts = []
@@ -108,7 +113,7 @@ class ChessDBManager:
         pgn_parts.append(f'[Black "{game_metadata.get("Black", "Unknown")}"]')
         pgn_parts.append(f'[Result "{game_metadata.get("Result", "*")}"]')
 
-        pgn_parts.append("\n")
+        pgn_parts.append("\n\n")
 
         for i, move in enumerate(moves):
             if i % 2 == 0:  # White's move
@@ -128,6 +133,38 @@ class ChessDBManager:
         pgn_string = " ".join(pgn_parts)
         return pgn_string
     
+    def convert_moves(self, moves, include_time=False):
+        pgn_parts = []
+
+        # Process moves
+        for i, move in enumerate(moves):
+            # Add move number for both white's and black's moves
+            move_number = (i // 2) + 1
+            if i % 2 == 0:  # White's move
+                formatted_move = f"{move_number}.{move['move']}"
+            else:  # Black's move
+                formatted_move = f"{move['move']}"
+
+            pgn_parts.append(formatted_move)
+
+            # Add clock annotation if available and included
+            if include_time and 'time' in move:
+                time_formatted = self.format_time(move['time'])
+                pgn_parts.append(f"{{[%clk {time_formatted}]}}")
+
+        pgn_string = " ".join(pgn_parts)
+
+        moves_list = pgn_string.split(' ')
+        formatted_moves = []
+
+        for move in moves_list:
+            # Append each move to the list
+            formatted_moves.append(move)
+
+        eco_moves = tuple(formatted_moves)
+
+        return eco_moves
+    
     def format_time(self, time_in_seconds):
         """Format time in seconds into a clock annotation format (H:MM:SS)."""
         hours = int(time_in_seconds // 3600)
@@ -143,6 +180,25 @@ class ChessDBManager:
         }
         result = await self.async_db[MOVES_COLLECTION].insert_one(moves_document)
         return result.inserted_id
+    
+    async def upsert_move(self, unique_identifier, move_number, evaluation):
+        # First, fetch the game ID using the unique identifier
+        game_record = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
+        if not game_record:
+            print(f"Game with unique identifier {unique_identifier} not found.")
+            return
+
+        game_id = game_record['_id']
+
+        # Prepare the update for the move
+        move_update = {
+            "$set": {
+                f"moves.{move_number - 1}.evaluation": evaluation  # Adjust for 0-based indexing
+            }
+        }
+
+        # Perform the update
+        await self.async_db[MOVES_COLLECTION].update_one({"game_id": game_id}, move_update)
 
     def insert_variation(self, variation_data):
         # Insert a new variation into the 'variations' collection
