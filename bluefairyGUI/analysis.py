@@ -6,6 +6,7 @@ import chess
 import chess.engine
 import chess.pgn
 import logging
+from tqdm.asyncio import tqdm
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -47,18 +48,20 @@ class GameAnalyzer:
         analysis_results = []
 
         board = game.board()
+        total_moves = len(list(game.mainline_moves()))
+
+        pbar = tqdm(total=total_moves, desc="Analyzing Game")
+
         for move in game.mainline_moves():
             board.push(move)
             info = await self.engine.analyse(board, chess.engine.Limit(depth=20))
 
-            # Adjust score to be from White's perspective
-            if board.turn == chess.BLACK:  # After White's move
-                adjusted_score = info['score'].white()
-            else:  # After Black's move, invert the score
-                adjusted_score = -info['score'].black()
-
+            adjusted_score = info['score'].white() if board.turn == chess.BLACK else -info['score'].black()
             analysis_results.append({'score': adjusted_score, 'move': move})
-            # No need to pop the move, as we're iterating through mainline_moves
+
+            pbar.update(1)
+
+        pbar.close()
 
         return analysis_results
     
