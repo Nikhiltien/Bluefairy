@@ -10,6 +10,7 @@ import re
 import csv
 import os
 import logging
+from database import ChessDBManager
 from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -188,12 +189,27 @@ async def parse_pgn_files(directory: str):
     logging.info(f"Total games parsed: {len(parsed_games)}")
     return parsed_games
 
-# async def whale():
-#     directory = 'games'
-#     parsed_games = await parse_pgn_files(directory)
+async def main():
+    uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
+    db_manager = ChessDBManager(uri)
+    directory = 'games'
+    parsed_games = await parse_pgn_files(directory)
 
-#     for game in parsed_games:
-#         logging.info(f"Game metadata: {game['Metadata']}")
-#         logging.info(f"First 5 moves: {game['Moves'][:5]}")
+    for game in parsed_games:
+        # Extract and store game metadata
+        game_metadata = game['Metadata']
+        moves = game['Moves']
+        game_id = await db_manager.insert_game(game_metadata, moves)
+        logging.info(f"Processed game with ID: {game_id}")
 
-# asyncio.run(whale())
+        # Update player profiles
+        white_player = game_metadata['White']
+        black_player = game_metadata['Black']
+        white_elo = game_metadata.get('WhiteElo', 'Unknown')
+        black_elo = game_metadata.get('BlackElo', 'Unknown')
+        await db_manager.upsert_player_profile(white_player, white_elo)
+        await db_manager.upsert_player_profile(black_player, black_elo)
+
+    db_manager.close_connection()
+
+asyncio.run(main())

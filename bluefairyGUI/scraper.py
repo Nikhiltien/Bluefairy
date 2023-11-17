@@ -3,7 +3,7 @@ import os
 import requests
 from requests.exceptions import HTTPError
 
-PLAYER_NAME = "niki0x"
+PLAYER_NAME = "hikaru"
 MONTHS = 2
 
 headers = {
