@@ -2,7 +2,7 @@ import sys
 import whale
 import asyncio
 import logging
-import prettytable
+from prettytable import PrettyTable
 from game_review import analyze_games_from_db
 from scraper import ChessComPlayerArchives
 from database import ChessDBManager
@@ -54,9 +54,24 @@ def get_search_criteria():
 
 async def search_player_profile():
     player_name = input("Enter player name: ")
+    uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
+    db_manager = ChessDBManager(uri)
+    
     # Fetch player profile from the database
-    # db_manager.get_player_profile(player_name) or similar function
-    # Display the profile in a table format
+    player_profile = db_manager.get_player_data({"name": player_name})
+    db_manager.close_connection()
+
+    if player_profile:
+        # Creating a PrettyTable instance
+        table = PrettyTable()
+        table.field_names = ["Username", "Elo"]
+
+        # Adding player data to the table
+        table.add_row([player_profile.get('name', 'N/A'), player_profile.get('elo', 'N/A')])
+
+        print(table)
+    else:
+        print(f"No profile found for player '{player_name}'.")
 
 def format_game_list(games, page=1, total_pages=1):
     for i, game in enumerate(games, start=1):
