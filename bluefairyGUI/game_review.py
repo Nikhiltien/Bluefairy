@@ -32,7 +32,7 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
         "Result": game.headers.get("Result", "N/A"),
     }
 
-    print("Storing evaluation, please wait...")
+    print("Saving game review data, please wait...")
     for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), 1):
         score = move_info['score'].score(mate_score=10000)
         # print(f"Move {move_number} ({move}): Evaluation: {score}")

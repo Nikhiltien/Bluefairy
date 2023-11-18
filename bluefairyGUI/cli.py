@@ -2,6 +2,7 @@ import sys
 import whale
 import asyncio
 import logging
+import prettytable
 from game_review import analyze_games_from_db
 from scraper import ChessComPlayerArchives
 from database import ChessDBManager
