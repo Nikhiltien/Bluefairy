@@ -50,24 +50,45 @@ class ChessDBManager:
     async def get_game_by_identifier(self, unique_identifier):
         """Check if a game with the given unique identifier exists."""
         game = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
+        if not game:
+            return None, None  # Return None for both game and moves if the game is not found
+
         moves_document = await self.async_db[MOVES_COLLECTION].find_one({"game_id": game['_id']})
-        moves = moves_document['moves']
+        moves = moves_document['moves'] if moves_document else None
         return (game, moves)
 
     async def insert_game(self, game_metadata, moves):
         """Insert a new chess game into the games collection if it doesn't exist."""
         game_hash = self.generate_game_hash(moves)
         unique_identifier = f"{game_metadata['Event']}-{game_metadata['Date']}-{game_metadata['White']}-{game_metadata['Black']}-{game_hash}"
-        existing_game = await self.get_game_by_identifier(unique_identifier)
+        existing_game, existing_moves = await self.get_game_by_identifier(unique_identifier)
         if existing_game:
             print(f"GameID {existing_game['_id']} already exists.")
-            return unique_identifier  # Return the ID of the existing game
+            return unique_identifier
 
         game_metadata['unique_identifier'] = unique_identifier
         result = await self.async_db[GAMES_COLLECTION].insert_one(game_metadata)
         game_id = result.inserted_id
         await self.insert_moves(game_id, moves)
         return unique_identifier
+    
+    async def search_games(self, player_name=None, elo_range=None, game_id=None):
+        """Search for games based on player name, elo range, or game ID."""
+        query = {}
+
+        if player_name:
+            # Assuming 'White' and 'Black' fields store player names
+            query["$or"] = [{"White": player_name}, {"Black": player_name}]
+
+        if elo_range:
+            # You'll need to parse the elo_range and form a query
+            pass
+
+        if game_id:
+            query["game_id"] = game_id
+
+        cursor = self.async_db[GAMES_COLLECTION].find(query)
+        return [game async for game in cursor]
 
     async def get_games_by_player(self, player_id):
         """Retrieve chess games involving a specific player."""

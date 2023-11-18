@@ -212,4 +212,4 @@ async def main():
 
     db_manager.close_connection()
 
-asyncio.run(main())
+# asyncio.run(main())

@@ -56,6 +56,33 @@ class ChessComPlayerArchives:
             else:
                 print(f"Failed to download archive {i + 1} with status code {pgn_response.status_code}")
 
+    def fetch_and_download_archives(self, num_archives=1, folder_path='./games'):
+        # Fetch the last num_archives
+        try:
+            response = requests.get(f"https://api.chess.com/pub/player/{self.username}/games/archives", headers=headers)
+            response.raise_for_status()
+            json_data = response.json()
+            self.archives = json_data.get('archives', [])[-num_archives:]
+        except HTTPError as e:
+            print(f"HTTP error occurred: {e}")
+            return
+        except json.JSONDecodeError:
+            print("Failed to decode the JSON response.")
+            return
+
+        # Download each archive
+        os.makedirs(folder_path, exist_ok=True)
+        for i, archive_url in enumerate(self.archives):
+            month_str = archive_url.split('/')[-1]  # Extract the month from the URL
+            pgn_response = requests.get(f"{archive_url}/pgn", headers=headers)
+            if pgn_response.status_code == 200:
+                file_path = f"{folder_path}/{self.username}_{month_str}.pgn"
+                with open(file_path, 'w') as f:
+                    f.write(pgn_response.text)
+                print(f"Successfully downloaded archive {i + 1} to {file_path}")
+            else:
+                print(f"Failed to download archive {i + 1} with status code {pgn_response.status_code}")
+
 if __name__ == "__main__":
     player_archives = ChessComPlayerArchives(PLAYER_NAME)
     player_archives.fetch_last_archives(MONTHS)
