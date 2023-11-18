@@ -123,7 +123,9 @@ class GameAnalyzer:
                 return self.openings[opening_key]['name'], self.openings[opening_key]['eco']
         return None, None
 
-    def identify_opening_from_pgn(self, pgn_string):
-        game = chess.pgn.read_game(io.StringIO(pgn_string))
+    def find_opening_from_game(self, game):
+        """
+        Identify the opening from a python-chess game object.
+        """
         moves = [self.board.san(move) for move in game.mainline_moves()]
-        return self.find_opening(moves)
+        return self.find_opening(tuple(moves))

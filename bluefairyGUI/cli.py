@@ -46,6 +46,14 @@ async def handle_game_downloads_and_ingestion(source, player_name, months):
 
     db_manager.close_connection()
 
+async def refresh_player_profile(player_name):
+    """
+    Refreshes the player profile by fetching the last month's game data.
+    """
+    print(f"Refreshing profile for {player_name}...")
+    await handle_game_downloads_and_ingestion('chess.com', player_name, 1)
+    print("Profile refresh complete.")
+
 def get_search_criteria():
     print("Search database by player name, elo range, and/or a gameID.")
     player_name = input("Player name: ")
@@ -58,19 +66,35 @@ async def search_player_profile():
     uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
     db_manager = ChessDBManager(uri)
     
-    # Fetch player profile from the database
+    # Fetch player profile and win/loss ratios
     player_profile = db_manager.get_player_data({"name": player_name})
+    win_loss_ratios = await db_manager.update_wr(player_name)
+
     db_manager.close_connection()
 
     if player_profile:
         # Creating a PrettyTable instance
         table = PrettyTable()
-        table.field_names = ["Username", "Elo"]
+        table.field_names = ["Username", "Elo", "Win Ratio (White)", "Win Ratio (Black)"]
 
-        # Adding player data to the table
-        table.add_row([player_profile.get('name', 'N/A'), player_profile.get('elo', 'N/A')])
+        # Adding player data and win/loss ratios to the table
+        table.add_row([
+            player_profile.get('name', 'N/A'), 
+            player_profile.get('elo', 'N/A'),
+            f"{win_loss_ratios['white_win_ratio'] * 100:.2f}%",
+            f"{win_loss_ratios['black_win_ratio'] * 100:.2f}%"
+        ])
 
         print(table)
+        while True:
+            choice = input("Options: \n1. Refresh Profile\n2. Return to Main Menu\nEnter choice (1/2): ")
+            if choice == '1':
+                await refresh_player_profile(player_name)
+                break  # Break after refreshing to avoid repetition
+            elif choice == '2':
+                break  # Return to main menu
+            else:
+                print("Invalid choice. Please enter 1 or 2.")
     else:
         print(f"No profile found for player '{player_name}'.")
 

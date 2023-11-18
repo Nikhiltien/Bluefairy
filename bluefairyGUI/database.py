@@ -225,3 +225,16 @@ class ChessDBManager:
         # Insert a new variation into the 'variations' collection
         # variation_data should be a dictionary with variation details
         self.db['variations'].insert_one(variation_data)
+
+    async def update_wr(self, player_name):
+        """Calculate the win/loss ratio for a player."""
+        games_as_white = await self.async_db[GAMES_COLLECTION].count_documents({"White": player_name})
+        wins_as_white = await self.async_db[GAMES_COLLECTION].count_documents({"White": player_name, "Result": "1-0"})
+
+        games_as_black = await self.async_db[GAMES_COLLECTION].count_documents({"Black": player_name})
+        wins_as_black = await self.async_db[GAMES_COLLECTION].count_documents({"Black": player_name, "Result": "0-1"})
+
+        win_ratio_white = wins_as_white / games_as_white if games_as_white > 0 else 0
+        win_ratio_black = wins_as_black / games_as_black if games_as_black > 0 else 0
+
+        return {"white_win_ratio": win_ratio_white, "black_win_ratio": win_ratio_black}
