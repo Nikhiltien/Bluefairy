@@ -89,14 +89,18 @@ async def search_and_display_games():
 
     if games:
         games_per_page = 7
-        padded_games = [None] + games + [None]
-        pages = [padded_games[i:i + games_per_page + 2] for i in range(0, len(padded_games), games_per_page + 2)]
+        # Padding pages for navigation
+        pages = [games[i:i + games_per_page] for i in range(0, len(games), games_per_page)]
+        for page in pages:
+            page.insert(0, None)  # Placeholder for '1'
+            page.append(None)     # Placeholder for '9'
+
         total_pages = len(pages)
         page_number = 1
 
         while True:
             displayed_games = pages[page_number - 1]
-            format_game_list(displayed_games[1:-1], page_number, total_pages)  # Exclude None placeholders
+            format_game_list(displayed_games, page_number, total_pages)
 
             choice = input("Enter the game number to analyze or navigate: ")
 
@@ -106,10 +110,14 @@ async def search_and_display_games():
                 page_number += 1
             elif choice == '/m':
                 return
-            elif choice.isdigit() and 2 <= int(choice) <= 8 and displayed_games[int(choice)] is not None:
-                selected_game = displayed_games[int(choice)]
-                unique_identifier = selected_game['unique_identifier']
-                await analyze_games_from_db(ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"), unique_identifier)
+            elif choice.isdigit():
+                game_index = int(choice) - 1
+                if 1 <= game_index <= len(displayed_games) and displayed_games[game_index] is not None:
+                    selected_game = displayed_games[game_index]
+                    unique_identifier = selected_game['unique_identifier']
+                    await analyze_games_from_db(ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"), unique_identifier)
+                else:
+                    print("Invalid game number.")
             else:
                 print("Invalid input.")
 
