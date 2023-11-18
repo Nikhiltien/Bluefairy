@@ -19,6 +19,7 @@ def display_ascii_title():
                                         |___/  
     """
     print(ascii_art)
+    print("v0.0.1")
 
 def get_player_name():
     return input("Enter player name: ")
