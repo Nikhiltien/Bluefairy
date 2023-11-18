@@ -51,8 +51,17 @@ def get_search_criteria():
     game_id = input("Game ID: ")
     return player_name, elo_range, game_id
 
-def format_game_list(games):
-    for i, game in enumerate(games[:10], start=1):
+async def search_player_profile():
+    player_name = input("Enter player name: ")
+    # Fetch player profile from the database
+    # db_manager.get_player_profile(player_name) or similar function
+    # Display the profile in a table format
+
+def format_game_list(games, page=1, total_pages=1):
+    for i, game in enumerate(games, start=1):
+        if game is None:
+            continue  # Skip None values
+
         event = game.get('Event', 'Unknown Event')
         date = game.get('Date', 'Unknown Date')
         white = game.get('White', 'Unknown')
@@ -62,10 +71,10 @@ def format_game_list(games):
         result = game.get('Result', 'Unknown Result')
 
         print(f"{i}. {date}, {white} ({elo_white}) vs. {black} ({elo_black}), {result}")
+    
+    print(f"Page {page}/{total_pages} - Enter 1 or 9 to navigate, '/m' for main menu")
 
-async def main():
-    display_ascii_title()
-
+async def search_and_display_games():
     player_name, elo_range, game_id = get_search_criteria()
     games = await search_games_in_db(player_name, elo_range, game_id)
 
@@ -79,12 +88,44 @@ async def main():
             games = await search_games_in_db(player_name, elo_range, game_id)
 
     if games:
-        print("Select a game from the list:")
-        format_game_list(games)
-        game_choice = int(input("Enter the number of the game you want to analyze: "))
-        selected_game = games[game_choice - 1]
-        unique_identifier = selected_game['unique_identifier']
-        await analyze_games_from_db(ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"), unique_identifier)
+        games_per_page = 7
+        padded_games = [None] + games + [None]
+        pages = [padded_games[i:i + games_per_page + 2] for i in range(0, len(padded_games), games_per_page + 2)]
+        total_pages = len(pages)
+        page_number = 1
+
+        while True:
+            displayed_games = pages[page_number - 1]
+            format_game_list(displayed_games[1:-1], page_number, total_pages)  # Exclude None placeholders
+
+            choice = input("Enter the game number to analyze or navigate: ")
+
+            if choice == '1' and page_number > 1:
+                page_number -= 1
+            elif choice == '9' and page_number < total_pages:
+                page_number += 1
+            elif choice == '/m':
+                return
+            elif choice.isdigit() and 2 <= int(choice) <= 8 and displayed_games[int(choice)] is not None:
+                selected_game = displayed_games[int(choice)]
+                unique_identifier = selected_game['unique_identifier']
+                await analyze_games_from_db(ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"), unique_identifier)
+            else:
+                print("Invalid input.")
+
+async def main():
+    display_ascii_title()
+
+    while True:
+        choice = input("Choose an option: \n1. Search for Player Profile\n2. Search for Game\nEnter choice (1/2) or '/m' to exit: ")
+        if choice == '/m':
+            break
+        elif choice == '1':
+            await search_player_profile()
+        elif choice == '2':
+            await search_and_display_games()
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -54,7 +54,7 @@ class GameAnalyzer:
 
         for move in game.mainline_moves():
             board.push(move)
-            info = await self.engine.analyse(board, chess.engine.Limit(depth=20))
+            info = await self.engine.analyse(board, chess.engine.Limit(depth=18))
 
             adjusted_score = info['score'].white() if board.turn == chess.BLACK else -info['score'].black()
             analysis_results.append({'score': adjusted_score, 'move': move})
