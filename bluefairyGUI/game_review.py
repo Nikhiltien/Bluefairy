@@ -31,11 +31,11 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
         "Black": game.headers.get("Black", "N/A"),
         "Result": game.headers.get("Result", "N/A"),
     }
-    print(f"Game {game} Metadata: {metadata}")
+    # print(f"Game: {metadata}")
 
     for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), 1):
         score = move_info['score'].score(mate_score=10000)
-        print(f"Move {move_number} ({move}): Evaluation: {score}")
+        # print(f"Move {move_number} ({move}): Evaluation: {score}")
         await db_manager.upsert_move(unique_identifier, move_number, score)
 
     if plot_evaluations:
@@ -61,5 +61,4 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
 
     await analyzer.close_engine()
 
-# Usage
-asyncio.run(analyze_games_from_db(db_manager, unique_identifier))
+# asyncio.run(analyze_games_from_db(db_manager, unique_identifier))

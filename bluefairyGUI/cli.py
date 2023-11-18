@@ -2,6 +2,7 @@ import sys
 import whale
 import asyncio
 import logging
+from game_review import analyze_games_from_db
 from scraper import ChessComPlayerArchives
 from database import ChessDBManager
 
@@ -22,7 +23,8 @@ def get_player_name():
     return input("Enter player name: ")
 
 async def search_games_in_db(player_name, elo_range, game_id):
-    db_manager = ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority")
+    uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
+    db_manager = ChessDBManager(uri)
     games = await db_manager.search_games(player_name, elo_range, game_id)
     db_manager.close_connection()
     return games
@@ -49,6 +51,18 @@ def get_search_criteria():
     game_id = input("Game ID: ")
     return player_name, elo_range, game_id
 
+def format_game_list(games):
+    for i, game in enumerate(games[:10], start=1):
+        event = game.get('Event', 'Unknown Event')
+        date = game.get('Date', 'Unknown Date')
+        white = game.get('White', 'Unknown')
+        black = game.get('Black', 'Unknown')
+        elo_white = game.get('WhiteElo', 'N/A')
+        elo_black = game.get('BlackElo', 'N/A')
+        result = game.get('Result', 'Unknown Result')
+
+        print(f"{i}. {date}, {white} ({elo_white}) vs. {black} ({elo_black}), {result}")
+
 async def main():
     display_ascii_title()
 
@@ -66,11 +80,11 @@ async def main():
 
     if games:
         print("Select a game from the list:")
-        for i, game in enumerate(games, start=1):
-            print(f"{i}. {game}")  # Format this line based on how your game data is structured
+        format_game_list(games)
         game_choice = int(input("Enter the number of the game you want to analyze: "))
         selected_game = games[game_choice - 1]
-        # Add functionality to analyze or display the selected game
+        unique_identifier = selected_game['unique_identifier']
+        await analyze_games_from_db(ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"), unique_identifier)
 
 if __name__ == "__main__":
     asyncio.run(main())
