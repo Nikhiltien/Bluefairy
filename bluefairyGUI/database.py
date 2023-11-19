@@ -57,20 +57,34 @@ class ChessDBManager:
         moves = moves_document['moves'] if moves_document else None
         return (game, moves)
 
-    async def insert_game(self, game_metadata, moves):
+    async def insert_game(self, game_metadata, moves, opening_name=None):
         """Insert a new chess game into the games collection if it doesn't exist."""
         game_hash = self.generate_game_hash(moves)
         unique_identifier = f"{game_metadata['Event']}-{game_metadata['Date']}-{game_metadata['White']}-{game_metadata['Black']}-{game_hash}"
-        existing_game, existing_moves = await self.get_game_by_identifier(unique_identifier)
+        existing_game, _ = await self.get_game_by_identifier(unique_identifier)
         if existing_game:
             print(f"GameID {existing_game['_id']} already exists.")
             return unique_identifier
 
         game_metadata['unique_identifier'] = unique_identifier
+        game_metadata['opening_name'] = opening_name
+
         result = await self.async_db[GAMES_COLLECTION].insert_one(game_metadata)
         game_id = result.inserted_id
         await self.insert_moves(game_id, moves)
         return unique_identifier
+    
+    async def update_game_with_opening(self, unique_identifier, opening_name):
+        await self.async_db[GAMES_COLLECTION].update_one(
+            {"unique_identifier": unique_identifier}, 
+            {"$set": {"Opening": opening_name}}
+        )
+    
+    async def mark_reviewed(self, unique_identifier):
+        await self.async_db[GAMES_COLLECTION].update_one(
+            {"unique_identifier": unique_identifier},
+            {"$set": {"review": True}}
+        )
     
     async def search_games(self, player_name=None, elo_range=None, game_id=None):
         """Search for games based on player name, elo range, or game ID."""

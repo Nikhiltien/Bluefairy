@@ -27,6 +27,15 @@ class GameAnalyzer:
         if self.engine:
             await self.engine.quit()
 
+    @staticmethod
+    def pgn_to_game(pgn_string):
+        """
+        Convert a PGN string to a python-chess Game object.
+        """
+        pgn_io = io.StringIO(pgn_string)
+        game = chess.pgn.read_game(pgn_io)
+        return game
+
     def load_games_from_directory(self, directory_path="../games"):
         all_games = []
         pgn_files = glob.glob(os.path.join(directory_path, '*.pgn'))
@@ -127,5 +136,17 @@ class GameAnalyzer:
         """
         Identify the opening from a python-chess game object.
         """
-        moves = [self.board.san(move) for move in game.mainline_moves()]
+        board = chess.Board()
+        moves = [board.san(move) for move in game.mainline_moves()]
         return self.find_opening(tuple(moves))
+    
+    async def check_opening(self, db_manager, unique_identifiers):
+        _, moves = await db_manager.get_game_by_identifier(unique_identifiers)
+
+        moves = db_manager.convert_moves(moves)
+        print(moves)
+
+        eco_code, opening_name = self.find_opening(moves)
+        print(f"Opening: {opening_name}, ECO Code: {eco_code}")
+
+        await self.close_engine()

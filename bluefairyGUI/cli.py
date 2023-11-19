@@ -110,8 +110,9 @@ def format_game_list(games, page=1, total_pages=1):
         elo_white = game.get('WhiteElo', 'N/A')
         elo_black = game.get('BlackElo', 'N/A')
         result = game.get('Result', 'Unknown Result')
-
-        print(f"{i}. {date}, {white} ({elo_white}) vs. {black} ({elo_black}), {result}")
+        reviewed_mark = '*' if game.get('review') else ''
+        
+        print(f"{i}. {reviewed_mark}{date}, {white} ({elo_white}) vs. {black} ({elo_black}), {result}")
     
     print(f"Page {page}/{total_pages} - Enter 1 or 9 to navigate, '/m' for main menu")
 

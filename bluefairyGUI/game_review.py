@@ -5,12 +5,13 @@ import chess.pgn
 from database import ChessDBManager
 import matplotlib.pyplot as plt
 
-uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
-db_manager = ChessDBManager(uri)
-unique_identifier = "Live Chess-2023.11.01-ITWillyB-niki0x-974f508f2e5258e017e67e7f8d36ad03d8e8c8a937e077ba873178257e125258"
+# uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
+# db_manager = ChessDBManager(uri)
+# unique_identifier = "Live Chess-2023.11.01-ITWillyB-niki0x-974f508f2e5258e017e67e7f8d36ad03d8e8c8a937e077ba873178257e125258"
 
 async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=True):
     analyzer = GameAnalyzer("stockfish")
+    analyzer.load_eco_book()
     await analyzer.init_engine()
 
     game, moves = await db_manager.get_game_by_identifier(unique_identifier)
@@ -18,10 +19,14 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
         print(f"No game data found for identifier: {unique_identifier}")
         return
 
+    eco_moves = db_manager.convert_moves(moves)
+
     pgn_string = db_manager.convert_to_pgn(game, moves)
 
     pgn_io = io.StringIO(pgn_string)
     game = chess.pgn.read_game(pgn_io)
+
+    eco_code, opening_name = analyzer.find_opening(eco_moves)
 
     analysis_results = await analyzer.analyze_game_async(game)
 
@@ -36,7 +41,9 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
     for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), 1):
         score = move_info['score'].score(mate_score=10000)
         # print(f"Move {move_number} ({move}): Evaluation: {score}")
+        await db_manager.update_game_with_opening(unique_identifier, eco_code)
         await db_manager.upsert_move(unique_identifier, move_number, score)
+        await db_manager.mark_reviewed(unique_identifier)
 
     if plot_evaluations:
         scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
