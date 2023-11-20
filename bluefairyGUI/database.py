@@ -216,24 +216,20 @@ class ChessDBManager:
         result = await self.async_db[MOVES_COLLECTION].insert_one(moves_document)
         return result.inserted_id
     
-    async def upsert_move(self, unique_identifier, move_number, evaluation):
-        # First, fetch the game ID using the unique identifier
+    async def update_all_moves(self, unique_identifier, evaluations):
+        """Update evaluations for all moves of a specific game."""
         game_record = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
         if not game_record:
             print(f"Game with unique identifier {unique_identifier} not found.")
             return
 
         game_id = game_record['_id']
+        move_updates = {f"moves.{i}.evaluation": eval for i, eval in enumerate(evaluations)}
 
-        # Prepare the update for the move
-        move_update = {
-            "$set": {
-                f"moves.{move_number - 1}.evaluation": evaluation  # Adjust for 0-based indexing
-            }
-        }
-
-        # Perform the update
-        await self.async_db[MOVES_COLLECTION].update_one({"game_id": game_id}, move_update)
+        await self.async_db[MOVES_COLLECTION].update_one(
+            {"game_id": game_id},
+            {"$set": move_updates}
+        )
 
     def insert_variation(self, variation_data):
         # Insert a new variation into the 'variations' collection

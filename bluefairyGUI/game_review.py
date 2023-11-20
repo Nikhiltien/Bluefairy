@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 # db_manager = ChessDBManager(uri)
 # unique_identifier = "Live Chess-2023.11.01-ITWillyB-niki0x-974f508f2e5258e017e67e7f8d36ad03d8e8c8a937e077ba873178257e125258"
 
+BLUNDER_THRESHOLD = 150
+
 async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=True):
     analyzer = GameAnalyzer("stockfish")
     analyzer.load_eco_book()
@@ -27,6 +29,7 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
     game = chess.pgn.read_game(pgn_io)
 
     eco_code, opening_name = analyzer.find_opening(eco_moves)
+    await db_manager.update_game_with_opening(unique_identifier, eco_code)
 
     analysis_results = await analyzer.analyze_game_async(game)
 
@@ -36,14 +39,12 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
         "Black": game.headers.get("Black", "N/A"),
         "Result": game.headers.get("Result", "N/A"),
     }
+    game_description = f"{metadata['Date']}, {metadata['White']} ({metadata['WhiteElo']}) vs. {metadata['Black']} ({metadata['BlackElo']}), {metadata['Result']}"
 
     print("Saving game review data, please wait...")
-    for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), 1):
-        score = move_info['score'].score(mate_score=10000)
-        # print(f"Move {move_number} ({move}): Evaluation: {score}")
-        await db_manager.update_game_with_opening(unique_identifier, eco_code)
-        await db_manager.upsert_move(unique_identifier, move_number, score)
-        await db_manager.mark_reviewed(unique_identifier)
+    evaluations = [move_info['score'].score(mate_score=10000) for move_info in analysis_results]
+    await db_manager.update_all_moves(unique_identifier, evaluations)
+    await db_manager.mark_reviewed(unique_identifier)
 
     if plot_evaluations:
         scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
@@ -58,10 +59,10 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
         plt.fill_between(moves, scores, 0, where=above_zero, interpolate=True, color='lightgray')
         plt.fill_between(moves, scores, 0, where=below_zero, interpolate=True, color='darkgray')
 
-        plt.title(f"{metadata['Event']} Evaluation")
+        plt.title(game_description)
         plt.xlabel("Move Number")
         plt.ylabel("Evaluation")
-        plt.xlim(left=0)
+        plt.xlim(left=1)
         plt.ylim(-10, 10)
         plt.grid(True)
         plt.show()
