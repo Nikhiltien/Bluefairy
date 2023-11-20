@@ -27,31 +27,33 @@ def get_player_name():
 async def search_games_in_db(player_name, elo_range, game_id):
     uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
     db_manager = ChessDBManager(uri)
-    games = await db_manager.search_games(player_name, elo_range, game_id)
-    db_manager.close_connection()
+    async with db_manager.get_connection() as db:
+        games = await db_manager.search_games(player_name, elo_range, game_id)
     return games
 
 async def handle_game_downloads_and_ingestion(source, player_name, months):
     uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
     db_manager = ChessDBManager(uri)
-
-    # Download and process games
-    if source.lower() == 'chess.com':
-        player_archives = ChessComPlayerArchives(player_name)
-        player_archives.fetch_and_download_archives(months, 'games')
-        await whale.main()
-    elif source.lower() == 'lichess':
-        print("Lichess option is not available at the moment.")
-        return
-
-    db_manager.close_connection()
+    async with db_manager.get_connection():
+        # Download and process games
+        if source.lower() == 'chess.com':
+            player_archives = ChessComPlayerArchives(player_name)
+            player_archives.fetch_and_download_archives(months, 'games')
+            await whale.main(db_manager)  # Pass the db connection to whale.main()
+        elif source.lower() == 'lichess':
+            print("Lichess option is not available at the moment.")
+            return
 
 async def refresh_player_profile(player_name):
     """
     Refreshes the player profile by fetching the last month's game data.
     """
-    print(f"Refreshing profile for {player_name}...")
-    await handle_game_downloads_and_ingestion('chess.com', player_name, 1)
+    uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
+    db_manager = ChessDBManager(uri)
+    async with db_manager.get_connection():
+        print(f"Refreshing profile for {player_name}...")
+        await handle_game_downloads_and_ingestion('chess.com', player_name, 1)
+        await db_manager.update_wr_and_openings(player_name)
     print("Profile refresh complete.")
 
 def get_search_criteria():
@@ -65,24 +67,26 @@ async def search_player_profile():
     player_name = input("Enter player name: ")
     uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
     db_manager = ChessDBManager(uri)
-    
-    # Fetch player profile and win/loss ratios
-    player_profile = db_manager.get_player_data({"name": player_name})
-    win_loss_ratios = await db_manager.update_wr(player_name)
-
-    db_manager.close_connection()
+    async with db_manager.get_connection():
+        player_profile = await db_manager.get_player_data({"name": player_name})
 
     if player_profile:
         # Creating a PrettyTable instance
         table = PrettyTable()
-        table.field_names = ["Username", "Elo", "Win Ratio (White)", "Win Ratio (Black)"]
+        table.field_names = ["Username", "Elo", "Win Ratio (White)", "Win Ratio (Black)", "Top 3 Openings"]
 
-        # Adding player data and win/loss ratios to the table
+        # Extracting W/R and top openings
+        win_ratio_white = f"{player_profile.get('white_win_ratio', 0) * 100:.2f}%" if 'white_win_ratio' in player_profile else "N/A"
+        win_ratio_black = f"{player_profile.get('black_win_ratio', 0) * 100:.2f}%" if 'black_win_ratio' in player_profile else "N/A"
+        top_openings = ', '.join(player_profile.get('top_openings', [])) if 'top_openings' in player_profile else "N/A"
+
+        # Adding player data to the table
         table.add_row([
             player_profile.get('name', 'N/A'), 
             player_profile.get('elo', 'N/A'),
-            f"{win_loss_ratios['white_win_ratio'] * 100:.2f}%",
-            f"{win_loss_ratios['black_win_ratio'] * 100:.2f}%"
+            win_ratio_white,
+            win_ratio_black,
+            top_openings
         ])
 
         print(table)
@@ -115,7 +119,7 @@ def format_game_list(games, page=1, total_pages=1):
         
         print(f"{i}. {reviewed_mark}{date}, {white} ({elo_white}) vs. {black} ({elo_black}), {result}, {opening}")
     
-    print(f"Page {page}/{total_pages} - Enter 1 or 9 to navigate, '/m' for main menu")
+    print(f"Page {page}/{total_pages} - Enter 9 or 0 to navigate, '/m' for main menu")
 
 async def search_and_display_games():
     player_name, elo_range, game_id = get_search_criteria()
@@ -131,13 +135,8 @@ async def search_and_display_games():
             games = await search_games_in_db(player_name, elo_range, game_id)
 
     if games:
-        games_per_page = 7
-        # Padding pages for navigation
+        games_per_page = 8
         pages = [games[i:i + games_per_page] for i in range(0, len(games), games_per_page)]
-        for page in pages:
-            page.insert(0, None)  # Placeholder for '1'
-            page.append(None)     # Placeholder for '9'
-
         total_pages = len(pages)
         page_number = 1
 
@@ -147,15 +146,15 @@ async def search_and_display_games():
 
             choice = input("Enter the game number to analyze or navigate: ")
 
-            if choice == '1' and page_number > 1:
+            if choice == '9' and page_number > 1:
                 page_number -= 1
-            elif choice == '9' and page_number < total_pages:
+            elif choice == '0' and page_number < total_pages:
                 page_number += 1
             elif choice == '/m':
                 return
             elif choice.isdigit():
                 game_index = int(choice) - 1
-                if 1 <= game_index <= len(displayed_games) and displayed_games[game_index] is not None:
+                if 0 <= game_index <= len(displayed_games) and displayed_games[game_index] is not None:
                     selected_game = displayed_games[game_index]
                     unique_identifier = selected_game['unique_identifier']
                     await analyze_games_from_db(ChessDBManager("mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"), unique_identifier)

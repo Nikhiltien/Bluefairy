@@ -33,25 +33,45 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
 
     analysis_results = await analyzer.analyze_game_async(game)
 
-    metadata = {
-        "Event": game.headers.get("Event", "N/A"),
-        "White": game.headers.get("White", "N/A"),
-        "Black": game.headers.get("Black", "N/A"),
-        "Result": game.headers.get("Result", "N/A"),
-    }
-    game_description = f"{metadata['Date']}, {metadata['White']} ({metadata['WhiteElo']}) vs. {metadata['Black']} ({metadata['BlackElo']}), {metadata['Result']}"
+    event = game.headers.get("Event", "Unknown Event")
+    white_player = game.headers.get("White", "Unknown Player")
+    black_player = game.headers.get("Black", "Unknown Player")
+    result = game.headers.get("Result", "Unknown Result")
+
+    # Create the plot title
+    plot_title = f"{event}" #
 
     print("Saving game review data, please wait...")
+    blunders = {}
+    scores = []
+    blunder_positions = []
+    blunders_with_best_moves = {}
+
+    for move_number, (move, move_info) in enumerate(zip(game.mainline_moves(), analysis_results), start=1):
+        score = move_info['score'].score(mate_score=10000)
+        scores.append(score / 100)  # Normalize score for graphing
+        
+        if move_number < len(analysis_results) - 1:
+            next_score = analysis_results[move_number]['score'].score(mate_score=10000)
+            if abs(next_score - score) > BLUNDER_THRESHOLD:
+                blunder_positions.append(move_number)
+                best_move = await analyzer.get_best_move(game, move_number)
+                blunders_with_best_moves[str(move_number)] = best_move
+
+    # print(blunders_with_best_moves)
     evaluations = [move_info['score'].score(mate_score=10000) for move_info in analysis_results]
-    await db_manager.update_all_moves(unique_identifier, evaluations)
+
+    await db_manager.update_all_moves(unique_identifier, evaluations, blunders_with_best_moves)
     await db_manager.mark_reviewed(unique_identifier)
 
     if plot_evaluations:
-        scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
+        # scores = [result['score'].score(mate_score=10000) / 100 for result in analysis_results]
         
         plt.figure(figsize=(10, 6))
         moves = range(1, len(scores) + 1)
         plt.plot(moves, scores, marker='o')
+        for blunder_pos in blunder_positions:
+            plt.plot(blunder_pos, scores[blunder_pos - 1], marker='o', color='red')
 
         above_zero = [score > 0 for score in scores]
         below_zero = [score <= 0 for score in scores]
@@ -59,7 +79,7 @@ async def analyze_games_from_db(db_manager, unique_identifier, plot_evaluations=
         plt.fill_between(moves, scores, 0, where=above_zero, interpolate=True, color='lightgray')
         plt.fill_between(moves, scores, 0, where=below_zero, interpolate=True, color='darkgray')
 
-        plt.title(game_description)
+        plt.title(plot_title)
         plt.xlabel("Move Number")
         plt.ylabel("Evaluation")
         plt.xlim(left=1)

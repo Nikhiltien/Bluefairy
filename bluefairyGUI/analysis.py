@@ -150,3 +150,21 @@ class GameAnalyzer:
         print(f"Opening: {opening_name}, ECO Code: {eco_code}")
 
         await self.close_engine()
+
+    async def get_best_move(self, game, move_number):
+        """
+        Get the best move for a given position in the game at a specific move number.
+        """
+        board = game.board()
+        
+        # Replay the game up to the specified move number
+        for i, move in enumerate(game.mainline_moves()):
+            if i + 1 == move_number:
+                break
+            board.push(move)
+
+        # Analyze the position to get the best move
+        result = await self.engine.play(board, chess.engine.Limit(time=0.1))
+        best_move = result.move
+
+        return str(best_move)

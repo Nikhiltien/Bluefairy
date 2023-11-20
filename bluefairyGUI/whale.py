@@ -97,21 +97,21 @@ class Parser():
     def convert_clock_times(clock_times_str):
         if not clock_times_str:
             return None
-        
-        clock_times = []
-        for time_str in clock_times_str:
-            try:
-                # Try to parse with milliseconds
-                time = datetime.strptime(time_str, "%H:%M:%S.%f").time()
-            except ValueError:
-                # If it fails, try to parse without milliseconds
-                time = datetime.strptime(time_str, "%H:%M:%S").time()
-            clock_times.append(time)
 
-        timedelta_objects = [
-            timedelta(hours=t.hour, minutes=t.minute, seconds=t.second, microseconds=t.microsecond) 
-            for t in clock_times
-        ]
+        timedelta_objects = []
+        for time_str in clock_times_str:
+            parts = time_str.split(':')
+            if len(parts) == 3:
+                hours, minutes, sec_fraction = parts
+                seconds_parts = sec_fraction.split('.')
+                seconds = int(seconds_parts[0])
+                milliseconds = int(seconds_parts[1]) if len(seconds_parts) > 1 else 0
+                td = timedelta(hours=int(hours), minutes=int(minutes), seconds=seconds, milliseconds=milliseconds)
+                timedelta_objects.append(td)
+            else:
+                logging.warning(f"Unexpected time format: {time_str}")
+                timedelta_objects.append(timedelta())
+
         return timedelta_objects
 
     @staticmethod
@@ -189,27 +189,33 @@ async def parse_pgn_files(directory: str):
     logging.info(f"Total games parsed: {len(parsed_games)}")
     return parsed_games
 
-async def main():
-    uri = "mongodb+srv://Cluster07315:Z2tCYVB3UnF7@cluster07315.49ooxiq.mongodb.net/?retryWrites=true&w=majority"
-    db_manager = ChessDBManager(uri)
+async def main(db_manager):
     directory = 'games'
     parsed_games = await parse_pgn_files(directory)
 
-    for game in parsed_games:
-        # Extract and store game metadata
-        game_metadata = game['Metadata']
-        moves = game['Moves']
-        game_id = await db_manager.insert_game(game_metadata, moves)
-        logging.info(f"Processed game with ID: {game_id}")
+    async with db_manager.get_connection():
+        all_game_data = []
+        for game in parsed_games:
+            # Extract and store game metadata
+            game_metadata = game['Metadata']
+            moves = game['Moves']
+            game_data = {
+                "metadata": game_metadata,
+                "moves": moves
+            }
+            all_game_data.append(game_data)
 
-        # Update player profiles
-        white_player = game_metadata['White']
-        black_player = game_metadata['Black']
-        white_elo = game_metadata.get('WhiteElo', 'Unknown')
-        black_elo = game_metadata.get('BlackElo', 'Unknown')
-        await db_manager.upsert_player_profile(white_player, white_elo)
-        await db_manager.upsert_player_profile(black_player, black_elo)
+            game_id = await db_manager.insert_game(game_metadata, moves)
+            logging.info(f"Processed game with ID: {game_id}")
 
-    db_manager.close_connection()
+            # Update player profiles
+            white_player = game_metadata['White']
+            black_player = game_metadata['Black']
+
+            await db_manager.upsert_player_profile(player_name=white_player)
+            await db_manager.upsert_player_profile(player_name=black_player)
+
+        # # Batch insert all games
+        # await db_manager.insert_games_batch(games=all_game_data)
 
 # asyncio.run(main())

@@ -6,6 +6,7 @@ import asyncio
 import motor
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
+from contextlib import asynccontextmanager
 
 DATABASE_NAME = "Bluefairy"
 PLAYERS_COLLECTION = "players"
@@ -14,13 +15,25 @@ MOVES_COLLECTION = "moves"
 
 class ChessDBManager:
     def __init__(self, uri="mongodb://localhost:27017"):
+        self.uri = uri
         self.client = MongoClient(uri)
         self.db = self.client[DATABASE_NAME]
         self.async_client = AsyncIOMotorClient(uri)
         self.async_db = self.async_client[DATABASE_NAME]
 
+    @asynccontextmanager
+    async def get_connection(self):
+        try:
+            self.async_client = AsyncIOMotorClient(self.uri)
+            self.async_db = self.async_client[DATABASE_NAME]
+            yield self.async_db
+        finally:
+            self.async_client.close()
+
     def close_connection(self):
         self.client.close()
+        if self.async_client:
+            self.async_client.close()
 
     @staticmethod
     def generate_game_hash(moves):
@@ -28,20 +41,42 @@ class ChessDBManager:
         move_string = ' '.join([f"{move['ply']} {move['move']}" for move in moves])
         return hashlib.sha256(move_string.encode()).hexdigest()
     
-    async def upsert_player_profile(self, player_name, elo):
-        """Create or update a player profile."""
+    async def insert_games_batch(self, games, batch_size=100):
+        """Insert games in batches."""
+        for i in range(0, len(games), batch_size):
+            batch = games[i:i + batch_size]
+            await self.async_db[GAMES_COLLECTION].insert_many(batch)
+    
+    async def upsert_player_profile(self, player_name):
+        """Create a player profile if it doesn't already exist."""
         result = await self.async_db[PLAYERS_COLLECTION].update_one(
             {"name": player_name},
-            {"$set": {"elo": elo}},
+            {"$setOnInsert": {"name": player_name}},  # Sets the 'name' field only on insert
             upsert=True  # Creates a new document if one doesn't exist
         )
         return result.upserted_id or result.modified_count
+
+    async def get_latest_game_elo(self, player_name):
+        """Fetch the most recent game for a player and return the Elo rating."""
+        # Assuming the games collection has a date field to sort by
+        latest_game = await self.async_db[GAMES_COLLECTION].find_one(
+            {"$or": [{"White": player_name}, {"Black": player_name}]},
+            sort=[("Date", pymongo.DESCENDING)]
+        )
+
+        if latest_game is None:
+            return None  # No games found for the player
+
+        player_elo = latest_game['WhiteElo'] if latest_game['White'] == player_name else latest_game['BlackElo']
+        return player_elo
     
-    def get_player_data(self, query):
-        """Fetch player data based on a query."""
-        player_data = self.db[PLAYERS_COLLECTION].find_one(query)
-        return player_data
-    
+    async def get_player_data(self, query):
+        try:
+            player_data = await self.async_db[PLAYERS_COLLECTION].find_one(query)
+            return player_data
+        except Exception as e:
+            logging.error(f"Error fetching player data: {e}")
+
     def delete_player_profile(self, player_id):
         """Delete a player profile from the database."""
         result = self.db[PLAYERS_COLLECTION].delete_one({"player_id": player_id})
@@ -140,13 +175,14 @@ class ChessDBManager:
         pgn_parts = []
 
         # Add headers
-        pgn_parts.append(f'[Event "{game_metadata.get("Event", "Unknown")}"]')
-        pgn_parts.append(f'[Site "{game_metadata.get("Site", "Unknown")}"]')
-        pgn_parts.append(f'[Date "{game_metadata.get("Date", "????")}"]')
-        pgn_parts.append(f'[Round "{game_metadata.get("Round", "?")}"]')
-        pgn_parts.append(f'[White "{game_metadata.get("White", "Unknown")}"]')
-        pgn_parts.append(f'[Black "{game_metadata.get("Black", "Unknown")}"]')
-        pgn_parts.append(f'[Result "{game_metadata.get("Result", "*")}"]')
+        headers = ["Event", "Site", "Date", "Round", "White", "Black", "Result"]
+
+        # Add headers with appropriate fallbacks
+        for header in headers:
+            value = game_metadata.get(header, None)
+            if value is None or value.strip() == "":
+                value = "?"  # Use '?' for missing or empty fields
+            pgn_parts.append(f'[{header} "{value}"]')
 
         pgn_parts.append("\n\n")
 
@@ -202,6 +238,9 @@ class ChessDBManager:
     
     def format_time(self, time_in_seconds):
         """Format time in seconds into a clock annotation format (H:MM:SS)."""
+        if time_in_seconds is None:
+            return "n/a"
+
         hours = int(time_in_seconds // 3600)
         minutes = int((time_in_seconds % 3600) // 60)
         seconds = int(time_in_seconds % 60)
@@ -216,15 +255,22 @@ class ChessDBManager:
         result = await self.async_db[MOVES_COLLECTION].insert_one(moves_document)
         return result.inserted_id
     
-    async def update_all_moves(self, unique_identifier, evaluations):
-        """Update evaluations for all moves of a specific game."""
+    async def update_all_moves(self, unique_identifier, evaluations, blunders):
+        """Update moves and evaluations for a specific game, adding the best move for blunders."""
         game_record = await self.async_db[GAMES_COLLECTION].find_one({"unique_identifier": unique_identifier})
         if not game_record:
             print(f"Game with unique identifier {unique_identifier} not found.")
             return
 
         game_id = game_record['_id']
-        move_updates = {f"moves.{i}.evaluation": eval for i, eval in enumerate(evaluations)}
+        move_updates = {}
+
+        # Update evaluations and add best moves for blunders
+        for i, eval in enumerate(evaluations):
+            move_updates[f"moves.{i}.evaluation"] = eval
+            ply_number = str(i + 1)  # Convert index to ply number
+            if ply_number in blunders:
+                move_updates[f"moves.{i}.best_move"] = blunders[ply_number]
 
         await self.async_db[MOVES_COLLECTION].update_one(
             {"game_id": game_id},
@@ -236,15 +282,56 @@ class ChessDBManager:
         # variation_data should be a dictionary with variation details
         self.db['variations'].insert_one(variation_data)
 
-    async def update_wr(self, player_name):
-        """Calculate the win/loss ratio for a player."""
+    async def update_wr_and_openings(self, player_name):
+        """Calculate the win/loss ratio for a player and update their profile with this info, top 3 openings, and latest Elo."""
+        # Count games played as White and wins as White
         games_as_white = await self.async_db[GAMES_COLLECTION].count_documents({"White": player_name})
         wins_as_white = await self.async_db[GAMES_COLLECTION].count_documents({"White": player_name, "Result": "1-0"})
 
+        # Count games played as Black and wins as Black
         games_as_black = await self.async_db[GAMES_COLLECTION].count_documents({"Black": player_name})
         wins_as_black = await self.async_db[GAMES_COLLECTION].count_documents({"Black": player_name, "Result": "0-1"})
 
+        # Calculate win ratios for both colors
         win_ratio_white = wins_as_white / games_as_white if games_as_white > 0 else 0
         win_ratio_black = wins_as_black / games_as_black if games_as_black > 0 else 0
 
-        return {"white_win_ratio": win_ratio_white, "black_win_ratio": win_ratio_black}
+        # Aggregate top 3 openings
+        pipeline = [
+            {"$match": {"$or": [{"White": player_name}, {"Black": player_name}]}},
+            {"$group": {"_id": "$Opening", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 3}
+        ]
+        top_openings = await self.async_db[GAMES_COLLECTION].aggregate(pipeline).to_list(length=None)
+        top_openings = [opening["_id"] for opening in top_openings if opening["_id"] is not None]
+
+        # Fetch the Elo rating from the most recent game
+        player_elo = await self.get_latest_game_elo(player_name)
+        if player_elo is None:
+            logging.warning(f"No recent games found for {player_name}. Elo rating not updated.")
+
+        # Prepare update fields
+        update_fields = {
+            "white_win_ratio": win_ratio_white, 
+            "black_win_ratio": win_ratio_black, 
+            "top_openings": top_openings
+        }
+
+        # Update Elo if available
+        if player_elo is not None:
+            update_fields["elo"] = player_elo
+
+        # Update player profile with all calculated and fetched data
+        await self.async_db[PLAYERS_COLLECTION].update_one(
+            {"name": player_name},
+            {"$set": update_fields},
+            upsert=True
+        )
+
+    async def store_best_moves(self, unique_identifier, best_move):
+        """Store the best move for blunders in a specific game."""
+        await self.async_db[GAMES_COLLECTION].update_one(
+            {"unique_identifier": unique_identifier},
+            {"$set": {"best_move": best_move}}
+        )
