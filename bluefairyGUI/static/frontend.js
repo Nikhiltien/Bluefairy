@@ -1,4 +1,4 @@
-import { Chessboard, FEN, INPUT_EVENT_TYPE, COLOR } from '/static/cm/src/Chessboard.js';
+import { Chessboard, FEN, INPUT_EVENT_TYPE } from '/static/cm/src/Chessboard.js';
 import { Markers } from "/static/cm/src/extensions/markers/Markers.js";
 import { Chess } from '/static/chess.js';
 
@@ -35,12 +35,11 @@ document.addEventListener("DOMContentLoaded", function() {
     assetsUrl: "static/cm/assets/",
     assetsCache: false,
     style: {
-        cssClass: "green",
+        cssClass: "chess-club",
         showCoordinates: true,
         borderType: 1,
         pieces: {
-            file: "pieces/standard.svg",
-            tileSize: 40
+            file: "pieces/staunty.svg",
             },
         animationDuration: 300
         },

@@ -4,26 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Game</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/cm/assets/chessboard.css">
     <link rel="icon" href="static/favicon.ico" type="image/x-icon">
+    <style>
+        /* Custom styles */
+        .chess-container {
+            flex-grow: 1; /* Allows container to fill the available space */
+            padding: 20px 10px 10px 10px; /* Explicit padding for all sides */
+            background-color: #f8f9fa;
+        }
+
+        .col-md-8 {
+            display: flex;
+            flex-direction: row; /* Ensures children are aligned horizontally */
+            align-items: flex-start; /* Aligns children at the start of the container vertically */
+            justify-content: flex-start; /* Aligns children to the start horizontally */
+        }
+
+        .evaluation-bar {
+            flex-grow: 0;
+            margin-right: 10px; /* Adds some space between the evaluation bar and the chessboard */
+            background-color: #343a40; /* Dark gray background */
+            border: 1px solid #dee2e6;
+        }
+
+        .chessboard {
+            flex-grow: 1; /* Allows the chessboard to take up remaining space */
+            max-width: 650px; /* Adjust as needed */
+            margin: auto; /* Centers the chessboard if there's extra space */
+        }
+    
+        body {
+            background-color: #0d1117;
+        }
+    
+        .player-name, .clock-time {
+            position: absolute;
+            padding: 5px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+    
+        .move-history {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-top: 20px;
+            height: calc(100% - 120px); /* Adjust height to allow space for buttons */
+            overflow-y: auto;
+            font-size: 0.85rem;
+            height: calc(100% - 150px); /* Adjust for navigation buttons */
+        }
+    
+        /* Game Navigation and Toggle Button Styles */
+        .game-navigation {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .row, .container-fluid {
+            overflow: visible; /* Adjust if necessary to ensure content is not hidden */
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            /* Adjust the styles here as per the layout requirement */
+            .evaluation-bar {
+                width: 3%; /* Or specify a fixed width as needed */
+                /* Other styles... */
+            }
+        }
+    </style>   
 </head>
 <body>
-    <div id="chessboard" class="chessboard" style="width: 400px; height: 400px;"></div>
-    <div id="evaluationBar" class="evaluation-bar"></div>
-    <div id="playerInfo">
-        <span id="playerWhiteName">White: [Name]</span>
-        <span id="playerBlackName">Black: [Name]</span>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Chessboard and Player Info Column -->
+            <div class="col-md-8">
+                <div id="evaluationBar" class="evaluation-bar">
+                    <!-- Evaluation bar content -->
+                </div>
+                <div id="chessboard" class="chessboard" style="width: 100%;"></div>
+                <div id="playerInfo" class="player-info">
+                    <span id="playerBlackName">Black: [Name]</span>
+                    <span id="playerWhiteName">White: [Name]</span>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div id="timeControls" class="time-controls">
+                    <span class="clock-time" id="whiteTimer">[White Time]</span>
+                    <span class="clock-time" id="blackTimer">[Black Time]</span>
+                </div>
+                <div id="moveHistory" class="move-history">
+                    <!-- Move history content -->
+                </div>
+                <div class="game-navigation">
+                    <button class="btn btn-primary">Previous Move</button>
+                    <button class="btn btn-primary">Next Move</button>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="timeControls">
-        <span id="whiteTimer">[White Time]</span>
-        <span id="blackTimer">[Black Time]</span>
-    </div>
-    <div id="moveHistory" class="move-history"></div>
     <script type="module" src="static/frontend.js"></script>
     <script type="module">
         import { Chess } from "/static/chess.js"
     </script>
     <script type="module" src="static/cm/src/Chessboard.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
     <!-- <script src="chessboard-setup.js"></script> -->
 </body>
 </html>
