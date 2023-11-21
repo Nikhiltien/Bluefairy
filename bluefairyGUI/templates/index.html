@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game</title>
+    <link rel="stylesheet" href="static/cm/assets/chessboard.css">
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div id="chessboard" class="chessboard" style="width: 400px; height: 400px;"></div>
+    <div id="evaluationBar" class="evaluation-bar"></div>
+    <div id="playerInfo">
+        <span id="playerWhiteName">White: [Name]</span>
+        <span id="playerBlackName">Black: [Name]</span>
+    </div>
+    <div id="timeControls">
+        <span id="whiteTimer">[White Time]</span>
+        <span id="blackTimer">[Black Time]</span>
+    </div>
+    <div id="moveHistory" class="move-history"></div>
+    <script type="module" src="static/frontend.js"></script>
+    <script type="module">
+        import { Chess } from "/static/chess.js"
+    </script>
+    <script type="module" src="static/cm/src/Chessboard.js"></script>
+    <!-- <script src="chessboard-setup.js"></script> -->
+</body>
+</html>
