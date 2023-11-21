@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/cm/assets/chessboard.css">
     <link rel="icon" href="static/favicon.ico" type="image/x-icon">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>  
     <style>
         /* Custom styles */
 
@@ -64,45 +68,7 @@
     </style>   
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-8">
-                <div id="evaluationBar" class="evaluation-bar">
-                    <!-- Evaluation bar content -->
-                </div>
-                <!-- Player name above the chessboard -->
-                <div id="playerTopName" class="player-name">
-                    <span>Black: [Name]</span>
-                </div>
-                <div id="chessboard" class="chessboard" style="width: 100%;"></div>
-                <!-- Player name below the chessboard -->
-                <div id="playerBottomName" class="player-name">
-                    <span>White: [Name]</span>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div id="timeControls" class="time-controls">
-                    <span class="clock-time" id="whiteTimer">[White Time]</span>
-                    <span class="clock-time" id="blackTimer">[Black Time]</span>
-                </div>
-                <div id="moveHistory" class="move-history">
-                    <!-- Move history content -->
-                </div>
-                <div class="game-navigation">
-                    <img src="static/random/bx-skip-previous-circle.png" alt="Previous Move" id="prevMove" onclick="previousMoveFunction()">
-                    <img src="static/random/bx-skip-next-circle.png" alt="Next Move" id="nextMove" onclick="nextMoveFunction()">
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="root" class="container-fluid"></div>
     <script type="module" src="static/frontend.js"></script>
-    <script type="module">
-        import { Chess } from "/static/chess.js"
-    </script>
-    <script type="module" src="static/cm/src/Chessboard.js"></script>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
-    <!-- <script src="chessboard-setup.js"></script> -->
 </body>
 </html>
