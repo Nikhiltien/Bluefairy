@@ -11,7 +11,8 @@
         /* Custom styles */
 
         .container-fluid {
-            padding-top: 50px; /* Adjust this value as needed for the desired space */
+            padding-top: 60px; /* Adjust this value as needed for the desired space */
+            padding-left: 30px;
         }
 
         .col-md-8 {
@@ -20,7 +21,7 @@
         }
 
         .evaluation-bar {
-            width: 4%; /* Fixed width for evaluation bar */
+            width: 30px; /* Fixed width for evaluation bar */
             margin-right: 10px; /* Space between the evaluation bar and chessboard */
             flex-shrink: 0; /* Prevents the bar from shrinking */
             background-color: #343a40;
@@ -30,11 +31,33 @@
         .chessboard {
             flex-grow: 1; /* Takes up remaining space */
             max-height: 90vh; /* 90% of the viewport height */
-            max-width: calc(100% - 60px); /* Adjusted to account for evaluation bar width and margin */
+            max-width: 80vh;
             margin: auto;
         }
 
-        body {
+        .game-navigation {
+            position: absolute;
+            bottom: 0; /* Aligns to the bottom of the parent container */
+            width: 100%;
+            text-align: center;
+        }
+
+        .player-name {
+            position: absolute; /* Absolute positioning */
+            left: 0; /* Align to the left */
+            color: white;
+        }
+
+        #playerTopName {
+            top: -20px; /* Adjust as needed to position above the chessboard */
+        }
+
+        #playerBottomName {
+            bottom: -20px; /* Adjust as needed to position below the chessboard */
+        }
+
+        body, .game-navigation, .player-info {
+            color: white;
             background-color: #0d1117;
         }
 
@@ -43,15 +66,18 @@
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Chessboard and Player Info Column -->
             <div class="col-md-8">
                 <div id="evaluationBar" class="evaluation-bar">
                     <!-- Evaluation bar content -->
                 </div>
+                <!-- Player name above the chessboard -->
+                <div id="playerTopName" class="player-name">
+                    <span>Black: [Name]</span>
+                </div>
                 <div id="chessboard" class="chessboard" style="width: 100%;"></div>
-                <div id="playerInfo" class="player-info">
-                    <span id="playerBlackName">Black: [Name]</span>
-                    <span id="playerWhiteName">White: [Name]</span>
+                <!-- Player name below the chessboard -->
+                <div id="playerBottomName" class="player-name">
+                    <span>White: [Name]</span>
                 </div>
             </div>
 
