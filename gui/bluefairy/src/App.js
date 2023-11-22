@@ -1,25 +1,30 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import { CssBaseline, Box, Grid } from '@mui/material';
+import MenuBar from './components/MenuBar';
+import FairyBoard from './components/FairyBoard';
+import EvaluationBar from './components/EvaluationBar';
+import Sidebar from './components/SideMenu';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+const App = () => {
+    return (
+        <>
+            <CssBaseline />
+            <MenuBar />
+            <Box style={{ marginTop: '20px', padding: '20px' }}>
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={8} style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex' }}>
+                            <EvaluationBar />
+                            <FairyBoard />
+                        </div>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <Sidebar />
+                    </Grid>
+                </Grid>
+            </Box>
+        </>
+    );
+};
 
 export default App;
