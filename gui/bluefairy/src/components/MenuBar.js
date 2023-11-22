@@ -6,7 +6,7 @@ const MenuBar = () => {
         <AppBar position="static" style={{ background: '#0A1929' }}>
             <Toolbar>
                 <Typography variant="h6" style={{ flexGrow: 1 }}>
-                    Chess Analysis App
+                    Bluefairy
                 </Typography>
                 <Button color="inherit">Home</Button>
                 <Button color="inherit">Analysis</Button>
