@@ -1,38 +1,39 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { Typography, Alert } from '@mui/material';
+import { Typography, Alert, Button } from '@mui/material';
 
-const FairyBoard = () => {
-    const game = useMemo(() => new Chess(), []);
+const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }) => {
+    const [game, setGame] = useState(() => new Chess(initialFen === 'start' ? undefined : initialFen))
     const [gamePosition, setGamePosition] = useState(game.fen());
     const [boardOrientation, setBoardOrientation] = useState('white');
     const [statusMessage, setStatusMessage] = useState('');
-    const [isGameOver, setIsGameOver] = useState(false);
-
-    const checkGameOver = () => {
-        if (game.game_over()) {
-            if (game.in_checkmate()) {
-                const winner = game.turn() === 'b' ? 'White' : 'Black';
-                setStatusMessage(`Checkmate! ${winner} wins.`);
-            } else if (game.in_draw()) {
-                setStatusMessage('Draw!');
-            }
-            return true;
-        }
-        return false;
-    };
+    const [moveHistory, setMoveHistory] = useState([]);
 
     useEffect(() => {
-        checkGameOver();
+        // Check for game over scenarios
+        // if (game.game_over()) {
+        //     if (game.in_checkmate()) {
+        //         const winner = game.turn() === 'b' ? 'White' : 'Black';
+        //         setStatusMessage(`Checkmate! ${winner} wins.`);
+        //     } else if (game.in_draw()) {
+        //         setStatusMessage('Draw!');
+        //     }
+        //     return true;
+        // }
+        // return false;
     }, [gamePosition]);
 
     const onDrop = (sourceSquare, targetSquare, piece) => {
+        // if (game.game_over()) {
+        //     setStatusMessage('Game is over. Start a new game to continue.');
+        //     return false;
+        // }
+
         try {
             const move = game.move({
                 from: sourceSquare,
                 to: targetSquare,
-                // Handle promotion. You may need a more complex logic here for user to choose the piece
                 promotion: piece === 'P' && targetSquare[1] === '8' ? 'q' :
                            piece === 'p' && targetSquare[1] === '1' ? 'q' : undefined
             });
@@ -43,11 +44,12 @@ const FairyBoard = () => {
             }
 
             setGamePosition(game.fen());
+            setMoveHistory(game.history({ verbose: true }));
             setStatusMessage('');
             return true;
         } catch (error) {
             console.error("Error during move:", error);
-            setStatusMessage('An unexpected error occurred');
+            // setStatusMessage('An unexpected error occurred');
             return false;
         }
     };
@@ -55,6 +57,14 @@ const FairyBoard = () => {
     const flipBoard = () => {
         setBoardOrientation(boardOrientation === 'white' ? 'black' : 'white');
     };
+
+    // const startNewGame = (fen) => {
+    //     const newGame = new Chess(fen);
+    //     setGame(newGame);
+    //     setGamePosition(newGame.fen());
+    //     setMoveHistory([]);
+    //     setStatusMessage('');
+    // };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -69,9 +79,13 @@ const FairyBoard = () => {
                     {statusMessage}
                 </Alert>
             )}
-            <Button onClick={flipBoard} style={{ marginTop: '10px' }}>
+            <Button onClick={() => flipBoard()} style={{ marginTop: '10px' }}>
                 Flip Board
             </Button>
+            {/* <Button onClick={() => startNewGame('start')} style={{ marginTop: '10px' }}>
+                Start New Game
+            </Button> */}
+            {/* Display move history or other controls as needed */}
         </div>
     );
 };
