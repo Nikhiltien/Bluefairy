@@ -19,20 +19,15 @@ const ParentComponent = () => {
     // Logic to navigate through game history
     const navigateHistory = (step) => {
         const newStep = currentStep + step;
-        console.log(`Attempting to navigate. Current step: ${currentStep}, New step: ${newStep}, Move History Length: ${moveHistory.length}`);
-    
         if (newStep >= 0 && newStep < moveHistory.length) {
-            console.log(`Navigating to step: ${newStep}`);
             setCurrentStep(newStep);
             setGamePosition(moveHistory[newStep]);
-        } else {
-            console.log(`Navigation out of bounds.`);
         }
     };
     
-
     const updateMoveHistory = useCallback((newPosition) => {
         setMoveHistory(prevHistory => [...prevHistory, newPosition]);
+        setCurrentStep(prevStep => prevStep + 1); // Update to point to the latest move
     }, []);
     
     // Logic to flip the board
