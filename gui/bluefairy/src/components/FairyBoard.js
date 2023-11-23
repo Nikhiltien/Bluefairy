@@ -1,34 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { Typography, Alert, Button } from '@mui/material';
+import { Alert } from '@mui/material';
 
-const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', boardOrientation = 'white', onFlipBoard }) => {
-    const [game, setGame] = useState(() => new Chess(initialFen === 'start' ? undefined : initialFen));
-    const [gamePosition, setGamePosition] = useState(game.fen());
+const FairyBoard = ({ boardOrientation, gamePosition, setExternalGamePosition, updateMoveHistory }) => {
+    const game = useMemo(() => new Chess(), []);
+    const [currentGamePosition, setCurrentGamePosition] = useState(game.fen());
     const [statusMessage, setStatusMessage] = useState('');
-    const [moveHistory, setMoveHistory] = useState([]);
 
     useEffect(() => {
-        // Check for game over scenarios
-        // if (game.game_over()) {
-        //     if (game.in_checkmate()) {
-        //         const winner = game.turn() === 'b' ? 'White' : 'Black';
-        //         setStatusMessage(`Checkmate! ${winner} wins.`);
-        //     } else if (game.in_draw()) {
-        //         setStatusMessage('Draw!');
-        //     }
-        //     return true;
-        // }
-        // return false;
-    }, [gamePosition]);
+        if (gamePosition) {
+            game.load(gamePosition);
+            setCurrentGamePosition(game.fen());
+        }
+    }, [gamePosition]);    
 
     const onDrop = (sourceSquare, targetSquare, piece) => {
-        // if (game.game_over()) {
+                // if (game.game_over()) {
         //     setStatusMessage('Game is over. Start a new game to continue.');
         //     return false;
         // }
-
+        
         try {
             const move = game.move({
                 from: sourceSquare,
@@ -42,8 +34,14 @@ const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR 
                 return false;
             }
 
-            setGamePosition(game.fen());
-            setMoveHistory(game.history({ verbose: true }));
+            const newFen = game.fen();
+            setCurrentGamePosition(newFen);
+            setExternalGamePosition(newFen); // Update the parent component
+            updateMoveHistory(newFen); // Update the parent component
+            // if (updateMoveHistory) {
+            //     updateMoveHistory(game.history({ verbose: true }));
+            // }
+
             setStatusMessage('');
             return true;
         } catch (error) {
@@ -57,9 +55,9 @@ const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Chessboard 
                 boardWidth={550} 
-                position={gamePosition} 
+                position={currentGamePosition}
                 onPieceDrop={onDrop}
-                orientation={boardOrientation}
+                boardOrientation={boardOrientation}
             />
             {statusMessage && (
                 <Alert severity="info" style={{ marginTop: '10px' }}>
