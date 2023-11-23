@@ -3,10 +3,9 @@ import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { Typography, Alert, Button } from '@mui/material';
 
-const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }) => {
-    const [game, setGame] = useState(() => new Chess(initialFen === 'start' ? undefined : initialFen))
+const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', boardOrientation = 'white', onFlipBoard }) => {
+    const [game, setGame] = useState(() => new Chess(initialFen === 'start' ? undefined : initialFen));
     const [gamePosition, setGamePosition] = useState(game.fen());
-    const [boardOrientation, setBoardOrientation] = useState('white');
     const [statusMessage, setStatusMessage] = useState('');
     const [moveHistory, setMoveHistory] = useState([]);
 
@@ -54,18 +53,6 @@ const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR 
         }
     };
 
-    const flipBoard = () => {
-        setBoardOrientation(boardOrientation === 'white' ? 'black' : 'white');
-    };
-
-    // const startNewGame = (fen) => {
-    //     const newGame = new Chess(fen);
-    //     setGame(newGame);
-    //     setGamePosition(newGame.fen());
-    //     setMoveHistory([]);
-    //     setStatusMessage('');
-    // };
-
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Chessboard 
@@ -79,13 +66,6 @@ const FairyBoard = ({ initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR 
                     {statusMessage}
                 </Alert>
             )}
-            <Button onClick={() => flipBoard()} style={{ marginTop: '10px' }}>
-                Flip Board
-            </Button>
-            {/* <Button onClick={() => startNewGame('start')} style={{ marginTop: '10px' }}>
-                Start New Game
-            </Button> */}
-            {/* Display move history or other controls as needed */}
         </div>
     );
 };
