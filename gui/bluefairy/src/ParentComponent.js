@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import FairyBoard from './components/FairyBoard';
 import SideMenu from './components/SideMenu';
-import MoveHistory from './components/MoveHistory';
+import { Chess } from 'chess.js';
 
 const ParentComponent = () => {
     const initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -20,14 +20,27 @@ const ParentComponent = () => {
     // Logic to navigate through game history
     const navigateHistory = (step) => {
         const newStep = currentStep + step;
-        if (newStep >= 0 && newStep < moveHistory.length) {
+        if (newStep >= 0 && newStep <= moveHistory.length) {
+            const game = new Chess();
+            // Iterate through the move history up to the new step
+            for (let i = 0; i < newStep; i++) {
+                game.move(moveHistory[i]);
+            }
             setCurrentStep(newStep);
-            setGamePosition(moveHistory[newStep]);
+            setGamePosition(game.fen());
         }
     };
     
+    const [currentPgn, setCurrentPgn] = useState('');
+
     const updateMoveHistory = useCallback((sanMove) => {
-        setMoveHistory(prevHistory => [...prevHistory, sanMove]);
+        setMoveHistory(prevHistory => {
+            const newHistory = [...prevHistory, sanMove];
+            const game = new Chess();
+            newHistory.forEach(move => game.move(move));
+            setCurrentPgn(game.pgn());
+            return newHistory;
+        });
         setCurrentStep(prevStep => prevStep + 1);
     }, []);    
     
