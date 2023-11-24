@@ -42,7 +42,18 @@ const ParentComponent = () => {
             return newHistory;
         });
         setCurrentStep(prevStep => prevStep + 1);
-    }, []);    
+    }, []);
+
+    const loadGameFromPgn = (pgn) => {
+        const game = new Chess();
+        if (game.loadPgn(pgn)) {
+            setGamePosition(game.fen());
+            setMoveHistory(game.history());
+            setCurrentStep(game.history().length);
+        } else {
+            console.error("Invalid PGN");
+        }
+    };    
     
     // Logic to flip the board
     const flipBoard = () => {
@@ -65,7 +76,8 @@ const ParentComponent = () => {
                 startNewGame={startNewGame} 
                 navigateHistory={navigateHistory} 
                 flipBoard={flipBoard}
-                moveHistory={moveHistory} />
+                moveHistory={moveHistory}
+                loadGameFromPgn={loadGameFromPgn} />
 
         </div>
     );

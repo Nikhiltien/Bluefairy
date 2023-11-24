@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import GameLibraryTab from './GameLibraryTab';
 import { Paper, Tabs, Tab, IconButton, Menu, MenuItem, List, ListItem, Grid, ListItemText } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -33,7 +34,7 @@ const MoveHistoryList = styled(List)({
     marginTop: '10px',
 });
 
-const SideMenu = ({ startNewGame, navigateHistory, flipBoard, moveHistory }) => {
+const SideMenu = ({ startNewGame, navigateHistory, flipBoard, moveHistory, loadGameFromPgn }) => {
     const [value, setValue] = useState(0);
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
 
@@ -65,6 +66,8 @@ const SideMenu = ({ startNewGame, navigateHistory, flipBoard, moveHistory }) => 
                 <WhiteTextTab label="Game Library" />
                 <WhiteTextTab label="Settings" onClick={handleOpenSettings} />
             </Tabs>
+
+            {value === 1 && <GameLibraryTab loadGameFromPgn={loadGameFromPgn} />}
 
             {/* Settings Menu */}
             <Menu
