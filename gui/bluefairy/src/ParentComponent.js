@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import FairyBoard from './components/FairyBoard';
 import SideMenu from './components/SideMenu';
+import MoveHistory from './components/MoveHistory';
 
 const ParentComponent = () => {
     const initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -11,7 +12,7 @@ const ParentComponent = () => {
 
     // Logic to start a new game in FairyBoard
     const startNewGame = () => {
-        setMoveHistory([initialFen]);
+        setMoveHistory([]); // Reset move history
         setCurrentStep(0);
         setGamePosition(initialFen);
     };    
@@ -25,10 +26,10 @@ const ParentComponent = () => {
         }
     };
     
-    const updateMoveHistory = useCallback((newPosition) => {
-        setMoveHistory(prevHistory => [...prevHistory, newPosition]);
-        setCurrentStep(prevStep => prevStep + 1); // Update to point to the latest move
-    }, []);
+    const updateMoveHistory = useCallback((sanMove) => {
+        setMoveHistory(prevHistory => [...prevHistory, sanMove]);
+        setCurrentStep(prevStep => prevStep + 1);
+    }, []);    
     
     // Logic to flip the board
     const flipBoard = () => {
@@ -50,7 +51,9 @@ const ParentComponent = () => {
             <SideMenu 
                 startNewGame={startNewGame} 
                 navigateHistory={navigateHistory} 
-                flipBoard={flipBoard} />
+                flipBoard={flipBoard}
+                moveHistory={moveHistory} />
+
         </div>
     );
 };

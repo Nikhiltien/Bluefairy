@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Paper, Tabs, Tab, IconButton, Menu, MenuItem } from '@mui/material';
+import { Paper, Tabs, Tab, IconButton, Menu, MenuItem, List, ListItem, Grid, ListItemText } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import LastPageIcon from '@mui/icons-material/LastPage';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { styled } from '@mui/material/styles';
 
 const GradientPaper = styled(Paper)({
@@ -26,7 +25,15 @@ const WhiteTextTab = styled(Tab)({
     color: 'white', // Set text color to white
 });
 
-const SideMenu = ({ startNewGame, navigateHistory, flipBoard }) => {
+const MoveHistoryList = styled(List)({
+    maxHeight: 200, // Set a maximum height
+    overflow: 'auto', // Enable scrolling
+    backgroundColor: '#3D3D3D',
+    color: 'white',
+    marginTop: '10px',
+});
+
+const SideMenu = ({ startNewGame, navigateHistory, flipBoard, moveHistory }) => {
     const [value, setValue] = useState(0);
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
 
@@ -41,6 +48,15 @@ const SideMenu = ({ startNewGame, navigateHistory, flipBoard }) => {
     const handleCloseSettings = () => {
         setSettingsAnchorEl(null);
     };
+
+    const pairedMoves = [];
+    for (let i = 0; i < moveHistory.length; i += 2) {
+        pairedMoves.push({
+            moveNumber: Math.floor(i / 2) + 1,
+            white: moveHistory[i],
+            black: moveHistory[i + 1]
+        });
+    }
 
     return (
         <GradientPaper>
@@ -59,6 +75,24 @@ const SideMenu = ({ startNewGame, navigateHistory, flipBoard }) => {
                 <MenuItem onClick={handleCloseSettings}>Engine Toggle</MenuItem>
                 {/* Additional settings options */}
             </Menu>
+
+            <MoveHistoryList>
+                {pairedMoves.map(({ moveNumber, white, black }) => (
+                    <ListItem key={moveNumber}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={4}>
+                                {moveNumber}.
+                            </Grid>
+                            <Grid item xs={4}>
+                                {white}
+                            </Grid>
+                            <Grid item xs={4}>
+                                {black || ''}
+                            </Grid>
+                        </Grid>
+                    </ListItem>
+                ))}
+            </MoveHistoryList>
 
             <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                 <IconButton style={{ color: 'white' }} onClick={() => navigateHistory(-2)}>

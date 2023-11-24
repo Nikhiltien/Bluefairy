@@ -37,16 +37,15 @@ const FairyBoard = ({ boardOrientation, gamePosition, setExternalGamePosition, u
             const newFen = game.fen();
             setCurrentGamePosition(newFen);
             setExternalGamePosition(newFen); // Update the parent component
-            updateMoveHistory(newFen); // Update the parent component
-            // if (updateMoveHistory) {
-            //     updateMoveHistory(game.history({ verbose: true }));
-            // }
-
+        
+            if (updateMoveHistory && move.san) {
+                updateMoveHistory(move.san); // Update the parent component with SAN notation
+            }
+        
             setStatusMessage('');
             return true;
         } catch (error) {
             console.error("Error during move:", error);
-            // setStatusMessage('An unexpected error occurred');
             return false;
         }
     };
