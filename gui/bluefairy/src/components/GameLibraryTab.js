@@ -9,8 +9,13 @@ const GameLibraryTab = ({ loadGameFromPgn }) => {
 
     return (
         <div>
-            <input type="text" value={pgnInput} onChange={handlePgnInputChange} />
-            <button onClick={() => loadGameFromPgn(pgnInput)}>Load PGN</button>
+        <textarea
+            value={pgnInput}
+            onChange={handlePgnInputChange}
+            rows="10" // Adjust the number of rows as needed
+            style={{ width: '100%' }} // Adjust styling as needed
+        />
+        <button onClick={() => loadGameFromPgn(pgnInput)}>Load PGN</button>
             <input type="text" placeholder="Search by player" />
             <input type="text" placeholder="Search by date" />
             {/* Additional search criteria */}
