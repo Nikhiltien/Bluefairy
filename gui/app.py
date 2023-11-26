@@ -1,8 +1,10 @@
 from quart import Quart, request, jsonify, websocket, render_template
+from quart_cors import cors
 from game_manager import ChessGame
 from analysis import GameAnalyzer
 
 app = Quart(__name__)
+app = cors(app, allow_origin="*") 
 connected_clients = set()
 game = ChessGame()
 analysis = GameAnalyzer()
@@ -28,6 +30,26 @@ async def broadcast_update(game_state):
 async def process_message(message):
     # Process incoming messages and broadcast updates
     pass
+
+@app.route('/load_pgn', methods=['POST'])
+async def load_pgn():
+    try:
+        data = await request.json
+        pgn_string = data.get('pgn')
+        print("Received PGN:", pgn_string)  # Log the received PGN string
+        if not pgn_string:
+            return jsonify({'status': 'error', 'message': 'No PGN provided'}), 400
+
+        game_object = analysis.pgn_to_game(pgn_string)
+        print("Converted to game object")  # Log success of conversion
+        analysis.load_game_state_from_object(game_object)  
+        current_fen = analysis.current_fen()
+        move_list = analysis.extract_moves_from_game(game_object)
+        print("FEN and move list extracted")  # Log success of extraction
+        return jsonify({'status': 'success', 'fen': current_fen, 'moveList': move_list})
+    except Exception as e:
+        print(f"Error processing PGN: {e}")  # Log the exception
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/move', methods=['POST'])
 async def make_move():

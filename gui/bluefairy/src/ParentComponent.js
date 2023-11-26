@@ -33,6 +33,8 @@ const ParentComponent = () => {
     
     const [currentPgn, setCurrentPgn] = useState('');
 
+    const [pgnInput, setPgnInput] = useState('');
+
     const updateMoveHistory = useCallback((sanMove) => {
         setMoveHistory(prevHistory => {
             const newHistory = [...prevHistory, sanMove];
@@ -44,14 +46,38 @@ const ParentComponent = () => {
         setCurrentStep(prevStep => prevStep + 1);
     }, []);
 
-    const loadGameFromPgn = (pgn) => {
-        const game = new Chess();
-        if (game.loadPgn(pgn)) {
-            setGamePosition(game.fen());
-            setMoveHistory(game.history());
-            setCurrentStep(game.history().length);
+    const loadGameFromPgn = async (pgn) => {
+        const response = await fetch('http://127.0.0.1:5000/load_pgn', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ pgn })
+        });
+    
+        if (response.ok) {
+            const data = await response.json();
+            setGamePosition(data.initialFen);
+            setMoveHistory(data.moveList);
+            setCurrentStep(0);
         } else {
-            console.error("Invalid PGN");
+            console.error('Failed to load PGN');
+        }
+    };
+    
+    const evaluation = async () => {
+        try {
+            const response = await fetch('/evaluation', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pgn: currentPgn})
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Display analysis results
+            } else {
+                console.error(data.message);
+            }
+        } catch (error) {
+            console.error('Error analyzing game:', error);
         }
     };    
     

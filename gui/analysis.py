@@ -168,3 +168,38 @@ class GameAnalyzer:
         best_move = result.move
 
         return str(best_move)
+    
+    def load_game_state_from_object(self, game_object):
+        self.board.reset()  # Reset the board to the initial position
+        for move in game_object.mainline_moves():
+            try:
+                self.board.push(move)
+            except ValueError:
+                print(f"Illegal move {move.uci()} at position {self.board.fen()}")
+                break
+
+    def current_fen(self):
+        """
+        Get the current FEN string of the game.
+        """
+        return self.board.fen()
+    
+    def extract_moves_from_game(self, game_object):
+        """
+        Extracts a list of moves in SAN format from a python-chess Game object.
+
+        Args:
+        game_object (chess.pgn.Game): The python-chess Game object.
+
+        Returns:
+        list: A list of moves in Standard Algebraic Notation (SAN).
+        """
+        moves_san = []
+        try:
+            board = game_object.board()
+            for move in game_object.mainline_moves():
+                moves_san.append(board.san(move))
+                board.push(move)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+        return moves_san
