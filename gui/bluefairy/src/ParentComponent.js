@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import FairyBoard from './components/FairyBoard';
 import SideMenu from './components/SideMenu';
+import EvaluationBar from './components/EvaluationBar';
 import { Chess } from 'chess.js';
 
 const ParentComponent = () => {
@@ -9,6 +10,7 @@ const ParentComponent = () => {
     const [gamePosition, setGamePosition] = useState(initialFen);
     const [currentStep, setCurrentStep] = useState(0);
     const [moveHistory, setMoveHistory] = useState([])
+    const [evaluationScore, setEvaluationScore] = useState(0);
 
     // Logic to start a new game in FairyBoard
     const startNewGame = () => {
@@ -72,6 +74,7 @@ const ParentComponent = () => {
             });
             const data = await response.json();
             if (data.status === 'success') {
+                setEvaluationScore(data.evaluationScore); // Update the evaluation score
                 // Display analysis results
             } else {
                 console.error(data.message);
@@ -79,7 +82,7 @@ const ParentComponent = () => {
         } catch (error) {
             console.error('Error analyzing game:', error);
         }
-    };    
+    }; 
     
     // Logic to flip the board
     const flipBoard = () => {
@@ -93,18 +96,22 @@ const ParentComponent = () => {
 
     return (
         <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', padding: '20px', height: 'calc(100vh - 90px)' }}>
-            <FairyBoard 
-                boardOrientation={boardOrientation}
-                gamePosition={gamePosition}
-                setExternalGamePosition={updateGamePosition}
-                updateMoveHistory={updateMoveHistory} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '5px' }}>
+                <EvaluationBar score={evaluationScore} />
+                <FairyBoard 
+                    boardOrientation={boardOrientation}
+                    gamePosition={gamePosition}
+                    setExternalGamePosition={updateGamePosition}
+                    updateMoveHistory={updateMoveHistory}
+                />
+            </div>
             <SideMenu 
                 startNewGame={startNewGame} 
                 navigateHistory={navigateHistory} 
                 flipBoard={flipBoard}
                 moveHistory={moveHistory}
-                loadGameFromPgn={loadGameFromPgn} />
-
+                loadGameFromPgn={loadGameFromPgn}
+            />
         </div>
     );
 };
