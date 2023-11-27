@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { Alert } from '@mui/material';
@@ -13,9 +13,11 @@ const FairyBoard = ({ boardOrientation, gamePosition, setExternalGamePosition, u
             game.load(gamePosition);
             setCurrentGamePosition(game.fen());
         }
-    }, [gamePosition]);    
+    }, [game, gamePosition]);    
 
     const onDrop = (sourceSquare, targetSquare, piece) => {
+        console.log("Attempting move:", sourceSquare, targetSquare, piece);
+        console.log("Current game state (FEN):", game.fen());
                 // if (game.game_over()) {
         //     setStatusMessage('Game is over. Start a new game to continue.');
         //     return false;

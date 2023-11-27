@@ -4,8 +4,25 @@ import SideMenu from './components/SideMenu';
 import EvaluationBar from './components/EvaluationBar';
 import { Chess } from 'chess.js';
 
+class MoveNode {
+    constructor(move, position, parent = null) {
+        this.move = move; // SAN notation of the move
+        this.position = position; // FEN string after the move
+        this.parent = parent; // Reference to the parent node
+        this.children = []; // Array of child nodes
+    }
+
+    addChild(move, position) {
+        const childNode = new MoveNode(move, position, this);
+        this.children.push(childNode);
+        return childNode;
+    }
+}
+
 const ParentComponent = () => {
     const initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const root = new MoveNode(null, initialFen);
+    const [currentNode, setCurrentNode] = useState(new MoveNode(null, initialFen));
     const [boardOrientation, setBoardOrientation] = useState('white');
     const [gamePosition, setGamePosition] = useState(initialFen);
     const [currentStep, setCurrentStep] = useState(0);
@@ -17,7 +34,7 @@ const ParentComponent = () => {
         setMoveHistory([]);
         setCurrentStep(0);
         setGamePosition(initialFen);
-    
+        console.log(gamePosition)
         if (ws) {
             ws.send(JSON.stringify({ command: 'reset' }));
         }
@@ -25,17 +42,16 @@ const ParentComponent = () => {
 
     // Logic to navigate through game history
     const navigateHistory = (step) => {
-        const newStep = currentStep + step;
-        if (newStep >= 0 && newStep <= moveHistory.length) {
-            const game = new Chess();
-            // Iterate through the move history up to the new step
-            for (let i = 0; i < newStep; i++) {
-                game.move(moveHistory[i]);
-            }
-            setCurrentStep(newStep);
-            setGamePosition(game.fen());
+        let newCurrentNode = currentNode;
+        if (step === -1 && newCurrentNode.parent) { // Move back
+            newCurrentNode = newCurrentNode.parent;
+        } else if (step === 1 && newCurrentNode.children.length > 0) { // Move forward
+            newCurrentNode = newCurrentNode.children[0]; // Assuming the first child is the main line
         }
-    };
+    
+        setCurrentNode(newCurrentNode);
+        setGamePosition(newCurrentNode.position);
+    };     
     
     const [currentPgn, setCurrentPgn] = useState('');
 
@@ -90,21 +106,19 @@ const ParentComponent = () => {
     }, [ws]);
 
     const updateMoveHistory = useCallback((sanMove) => {
-        setMoveHistory(prevHistory => {
-            const newHistory = [...prevHistory, sanMove];
-            const game = new Chess();
-            newHistory.forEach(move => game.move(move));
-            console.log("Frontend FEN:", game.fen());
-
-            if (ws) {
-                ws.send(JSON.stringify({ move: sanMove }));
-            }
-
-            setCurrentPgn(game.pgn());
-            return newHistory;
-        });
-        setCurrentStep(prevStep => prevStep + 1);
-    }, [ws]);
+        // Create a new move node and update the current node
+        const game = new Chess(currentNode.position);
+        game.move(sanMove);
+        const newPosition = game.fen();
+        const newNode = currentNode.addChild(sanMove, newPosition);
+    
+        setCurrentNode(newNode);
+        setCurrentPgn(game.pgn());
+    
+        if (ws) {
+            ws.send(JSON.stringify({ move: sanMove }));
+        }
+    }, [currentNode, ws]);        
 
     const loadGameFromPgn = async (pgn) => {
         const response = await fetch('http://127.0.0.1:5000/load_pgn', {
@@ -115,8 +129,15 @@ const ParentComponent = () => {
     
         if (response.ok) {
             const data = await response.json();
-            setGamePosition(data.initialFen);
             setMoveHistory(data.moveList);
+            setCurrentStep(0);
+    
+            // Update the chess.js instance with moves from the PGN
+            const game = new Chess();
+            data.moveList.forEach(move => {
+                game.move(move);
+            });
+            setGamePosition(game.fen()); // Update the game position to the final state after applying moves
             setCurrentStep(0);
         } else {
             console.error('Failed to load PGN');
