@@ -1,13 +1,11 @@
 from quart import Quart, request, jsonify, websocket, render_template
 from quart_cors import cors
-from game_manager import ChessGame
 from analysis import GameAnalyzer
 import json
 
 app = Quart(__name__)
 app = cors(app, allow_origin="*") 
 connected_clients = set()
-game = ChessGame()
 analyze = GameAnalyzer()
 
 @app.route('/')
@@ -93,14 +91,14 @@ async def make_move():
 
 @app.route('/undo', methods=['POST'])
 async def undo_move():
-    if game.undo_move():
+    if analyze.undo_move():
         return jsonify({'status': 'success', 'board': analyze.current_board()})
     else:
         return jsonify({'status': 'no moves to undo'}), 400
 
-@app.route('/game_state', methods=['GET'])
-async def game_state():
-    return jsonify({'status': 'success', 'state': game.game_state(), 'board': game.current_board()})
+# @app.route('/game_state', methods=['GET'])
+# async def game_state():
+#     return jsonify({'status': 'success', 'state': analyze.game_state(), 'board': analyze.current_board()})
 
 @app.websocket('/reset_board')
 async def reset_board():

@@ -256,6 +256,13 @@ class GameAnalyzer:
             print(f"Error making move: {e}")
             return False
         
+    def undo_move(self):
+        if self.move_history:
+            self.board.pop()
+            self.move_history.pop()
+            return True
+        return False
+        
     def normalize_score(self, raw_score):
         MAX_SCORE = 100  # Adjust this as needed, 1000 centipawns = 10 pawns
         normalized_score = raw_score / MAX_SCORE
