@@ -24,7 +24,7 @@ const MenuBar = () => {
                     <Button color="inherit" style={buttonStyle}>Profiles</Button>
                 </Link>
                 {/* Include other links as needed */}
-                <Button color="inherit" style={buttonStyle}>Games Library</Button>
+                <Button color="inherit" style={buttonStyle}>Game Library</Button>
                 <Button color="inherit" style={buttonStyle}>Settings</Button>
             </Toolbar>
         </AppBar>

@@ -39,7 +39,7 @@ const ParentComponent = () => {
     
     const [currentPgn, setCurrentPgn] = useState('');
 
-    const [pgnInput, setPgnInput] = useState('');
+    // const [pgnInput, setPgnInput] = useState('');
 
     const [ws, setWs] = useState(null);
 
@@ -122,25 +122,6 @@ const ParentComponent = () => {
             console.error('Failed to load PGN');
         }
     };
-    
-    const evaluation = async () => {
-        try {
-            const response = await fetch('/evaluation', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({pgn: currentPgn})
-            });
-            const data = await response.json();
-            if (data.status === 'success') {
-                setEvaluationScore(data.evaluationScore); // Update the evaluation score
-                // Display analysis results
-            } else {
-                console.error(data.message);
-            }
-        } catch (error) {
-            console.error('Error analyzing game:', error);
-        }
-    }; 
     
     // Logic to flip the board
     const flipBoard = () => {
