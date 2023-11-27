@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import FairyBoard from './components/FairyBoard';
 import SideMenu from './components/SideMenu';
 import EvaluationBar from './components/EvaluationBar';
@@ -14,10 +14,14 @@ const ParentComponent = () => {
 
     // Logic to start a new game in FairyBoard
     const startNewGame = () => {
-        setMoveHistory([]); // Reset move history
+        setMoveHistory([]);
         setCurrentStep(0);
         setGamePosition(initialFen);
-    };    
+    
+        if (ws) {
+            ws.send(JSON.stringify({ command: 'reset' }));
+        }
+    };
 
     // Logic to navigate through game history
     const navigateHistory = (step) => {
@@ -37,16 +41,70 @@ const ParentComponent = () => {
 
     const [pgnInput, setPgnInput] = useState('');
 
+    const [ws, setWs] = useState(null);
+
+    useEffect(() => {
+        const webSocketUrl = "ws://127.0.0.1:5000/ws"; // Adjust the URL as needed
+        const newWs = new WebSocket(webSocketUrl);
+
+        newWs.onopen = () => {
+            console.log("Connected to WebSocket");
+        };
+
+        newWs.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("Received from backend:", data);
+            if (data.fen) {
+                setGamePosition(data.fen);
+            }
+            if (data.evaluation) {
+                setEvaluationScore(data.evaluation);
+            }
+        };
+
+        newWs.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        setWs(newWs);
+
+        // Cleanup function
+        return () => {
+            newWs.close();
+        };
+    }, []);
+
+    // Include WebSocket as a dependency in useEffect
+    useEffect(() => {
+        if (ws) {
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.fen) {
+                    setGamePosition(data.fen);
+                }
+                if (data.evaluation) {
+                    setEvaluationScore(data.evaluation);
+                }
+            };
+        }
+    }, [ws]);
+
     const updateMoveHistory = useCallback((sanMove) => {
         setMoveHistory(prevHistory => {
             const newHistory = [...prevHistory, sanMove];
             const game = new Chess();
             newHistory.forEach(move => game.move(move));
+            console.log("Frontend FEN:", game.fen());
+
+            if (ws) {
+                ws.send(JSON.stringify({ move: sanMove }));
+            }
+
             setCurrentPgn(game.pgn());
             return newHistory;
         });
         setCurrentStep(prevStep => prevStep + 1);
-    }, []);
+    }, [ws]);
 
     const loadGameFromPgn = async (pgn) => {
         const response = await fetch('http://127.0.0.1:5000/load_pgn', {

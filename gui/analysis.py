@@ -16,16 +16,22 @@ class GameAnalyzer:
         self.engine_path = f"../engines/{_engine}"
         self.engine = None
         self.openings = {}
+        self.reset_board()
 
     async def init_engine(self):
         if not self.engine:
+            print("Initializing chess engine")
             transport, engine = await chess.engine.popen_uci(self.engine_path)
             self.engine = engine
             self.transport = transport
+            print("Engine initialized")
 
     async def close_engine(self):
         if self.engine:
             await self.engine.quit()
+
+    def reset_board(self):
+        self.board = chess.Board() 
 
     @staticmethod
     def pgn_to_game(pgn_string):
@@ -35,6 +41,14 @@ class GameAnalyzer:
         pgn_io = io.StringIO(pgn_string)
         game = chess.pgn.read_game(pgn_io)
         return game
+    
+    # In ChessGame
+    def current_fen(self):
+        return self.board.fen()
+
+    # In GameAnalyzer
+    def load_game_state_from_fen(self, fen):
+        self.board.set_fen(fen)
 
     def load_games_from_directory(self, directory_path="../games"):
         all_games = []
@@ -77,6 +91,28 @@ class GameAnalyzer:
     async def analyze_multiple_games(self, games):
         tasks = [self.analyze_game_async(game.board()) for game in games]
         return await asyncio.gather(*tasks)
+    
+    async def evaluate_current_position(self):
+        """
+        Evaluate the current position on the board from White's perspective.
+        """
+        if not self.engine:
+            await self.init_engine()
+
+        info = await self.engine.analyse(self.board, chess.engine.Limit(depth=20))
+
+        # Get the score from White's perspective
+        score = info["score"].white()
+
+        # If it's a mate score, ensure it's properly formatted
+        if score.is_mate():
+            mate_in_moves = score.mate()
+            # Adjust the mate score as needed (e.g., using a large positive or negative value)
+            score = 10000 if mate_in_moves > 0 else -10000
+        else:
+            score = score.score()  # Get the numerical score
+
+        return score
 
     def get_analysis_results(self, analysis_results):
         formatted_results = [{'score': result['score'], 'best_move': result['move']} for result in analysis_results]
@@ -203,3 +239,24 @@ class GameAnalyzer:
         except Exception as e:
             print(f"An error occurred: {e}")
         return moves_san
+    
+    def make_move(self, move):
+        print(f"Attempting to make move: {move}")
+        try:
+            move_object = self.board.parse_san(move)
+            print(f"Parsed move: {move_object.uci()}")
+            if move_object in self.board.legal_moves:
+                self.board.push(move_object)
+                print("Move made successfully")
+                return True
+            else:
+                print("Move is not legal:", move_object.uci())
+                return False
+        except Exception as e:
+            print(f"Error making move: {e}")
+            return False
+        
+    def normalize_score(self, raw_score):
+        MAX_SCORE = 100  # Adjust this as needed, 1000 centipawns = 10 pawns
+        normalized_score = raw_score / MAX_SCORE
+        return max(min(normalized_score, 10), -10)  # Clamping the score between -10 and 10
